@@ -38,7 +38,6 @@ html, body {
   touch-action: none;
 }
 
-/* ============ صفحه‌ها ============ */
 .screen {
   position: absolute;
   inset: 0;
@@ -84,15 +83,11 @@ html, body {
   font-weight: bold;
   color: #fff;
   cursor: pointer;
-  transition: transform 0.15s, filter 0.15s, box-shadow 0.15s;
-  box-shadow: 0 4px 0 rgba(0,0,0,0.4), 0 0 20px rgba(255,255,255,0.05);
+  transition: transform 0.15s, filter 0.15s;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.4);
 }
 
-.menu-btn:active {
-  transform: translateY(3px);
-  filter: brightness(1.2);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.4);
-}
+.menu-btn:active { transform: translateY(3px); filter: brightness(1.2); }
 
 .menu-btn.green  { background: linear-gradient(180deg, #3aa864, #2a7d4a); }
 .menu-btn.blue   { background: linear-gradient(180deg, #4a7fd0, #2f5da0); }
@@ -124,7 +119,6 @@ html, body {
 .best-score span { color: #4ad07a; font-weight: bold; }
 .combo-score { color: #ffdc3c; font-size: 18px; font-weight: bold; }
 
-/* ============ HUD ============ */
 #hud {
   position: absolute;
   top: 0; left: 0; right: 0;
@@ -143,7 +137,6 @@ html, body {
   padding: 5px 10px;
   border-radius: 8px;
   border: 1px solid rgba(255,255,255,0.15);
-  backdrop-filter: blur(4px);
 }
 
 #hp { color: #ff5050; }
@@ -160,15 +153,8 @@ html, body {
   z-index: 5;
   pointer-events: none;
   display: none;
-  animation: pulse 0.4s infinite alternate;
 }
 
-@keyframes pulse {
-  from { transform: translateX(-50%) scale(1); }
-  to   { transform: translateX(-50%) scale(1.15); }
-}
-
-/* ============ کنترل‌ها ============ */
 #touch-controls {
   position: absolute;
   inset: 0;
@@ -187,27 +173,41 @@ html, body {
   cursor: pointer;
   touch-action: none;
   pointer-events: auto;
-  transition: background 0.08s, transform 0.08s, box-shadow 0.1s;
+  transition: background 0.08s, transform 0.08s;
   display: flex;
   justify-content: center;
   align-items: center;
-  backdrop-filter: blur(4px);
-  -webkit-user-select: none;
 }
 
 .ctrl-btn:active, .ctrl-btn.pressed {
   background: rgba(80, 150, 255, 0.85);
   transform: scale(0.9);
-  box-shadow: 0 0 20px rgba(80, 150, 255, 0.8);
 }
 
-#btn-up    { left: calc(50% - 110px); bottom: 170px; width: 72px; height: 72px; }
-#btn-left  { left: 20px; bottom: 100px; width: 72px; height: 72px; }
-#btn-down  { left: calc(50% - 110px); bottom: 100px; width: 72px; height: 72px; }
-#btn-right { left: calc(50% - 40px); bottom: 100px; width: 72px; height: 72px; }
+/* ============ چیدمان دکمه‌ها ============ */
 
+/* D-pad: پایین چپ */
+#btn-up    { left: 95px;  bottom: 180px; width: 65px; height: 65px; }
+#btn-left  { left: 25px;  bottom: 110px; width: 65px; height: 65px; }
+#btn-down  { left: 95px;  bottom: 110px; width: 65px; height: 65px; }
+#btn-right { left: 165px; bottom: 110px; width: 65px; height: 65px; }
+
+/* BOMB: بالای D-pad */
+#btn-bomb {
+  left: 25px; bottom: 255px;
+  width: 70px; height: 70px;
+  background: rgba(220, 130, 40, 0.4);
+  border-color: rgba(255, 180, 80, 0.7);
+  font-size: 13px;
+}
+
+#btn-bomb:active, #btn-bomb.pressed {
+  background: rgba(255, 150, 50, 0.95);
+}
+
+/* FIRE: پایین راست */
 #btn-fire {
-  right: 20px; bottom: 40px;
+  right: 20px; bottom: 30px;
   width: 100px; height: 100px;
   background: rgba(220, 50, 50, 0.45);
   border-color: rgba(255, 100, 100, 0.8);
@@ -216,12 +216,12 @@ html, body {
 
 #btn-fire:active, #btn-fire.pressed {
   background: rgba(255, 80, 80, 0.95);
-  box-shadow: 0 0 30px rgba(255, 80, 80, 0.9);
 }
 
+/* AUTO: کنار FIRE */
 #btn-auto {
-  right: 130px; bottom: 40px;
-  width: 80px; height: 80px;
+  right: 130px; bottom: 30px;
+  width: 78px; height: 78px;
   background: rgba(60, 160, 90, 0.4);
   border-color: rgba(100, 255, 130, 0.7);
   font-size: 14px;
@@ -230,40 +230,20 @@ html, body {
 #btn-auto.on {
   background: rgba(60, 255, 90, 0.9);
   box-shadow: 0 0 25px rgba(60, 255, 90, 0.9);
-  animation: autoPulse 0.8s infinite alternate;
-}
-
-@keyframes autoPulse {
-  from { box-shadow: 0 0 15px rgba(60, 255, 90, 0.7); }
-  to   { box-shadow: 0 0 35px rgba(60, 255, 90, 1); }
-}
-
-#btn-bomb {
-  left: 20px; bottom: 190px;
-  width: 85px; height: 85px;
-  background: rgba(220, 130, 40, 0.4);
-  border-color: rgba(255, 180, 80, 0.7);
-  font-size: 14px;
-}
-
-#btn-bomb:active, #btn-bomb.pressed {
-  background: rgba(255, 150, 50, 0.95);
-  box-shadow: 0 0 30px rgba(255, 150, 50, 0.9);
 }
 
 .hidden { display: none !important; }
 
-/* ============ موبایل کوچک ============ */
 @media (max-height: 700px) {
   .screen h1 { font-size: 26px; }
   .menu-btn { padding: 11px 16px; font-size: 16px; }
-  #btn-up { bottom: 145px; width: 60px; height: 60px; left: calc(50% - 95px); }
-  #btn-left { bottom: 85px; width: 60px; height: 60px; }
-  #btn-down { bottom: 85px; width: 60px; height: 60px; left: calc(50% - 95px); }
-  #btn-right { bottom: 85px; width: 60px; height: 60px; left: calc(50% - 35px); }
-  #btn-fire { width: 85px; height: 85px; }
-  #btn-auto { width: 65px; height: 65px; right: 115px; }
-  #btn-bomb { width: 70px; height: 70px; bottom: 155px; }
+  #btn-up { bottom: 150px; width: 58px; height: 58px; left: 85px; }
+  #btn-left { bottom: 90px; width: 58px; height: 58px; left: 20px; }
+  #btn-down { bottom: 90px; width: 58px; height: 58px; left: 85px; }
+  #btn-right { bottom: 90px; width: 58px; height: 58px; left: 150px; }
+  #btn-bomb { width: 62px; height: 62px; bottom: 215px; left: 20px; font-size: 11px; }
+  #btn-fire { width: 88px; height: 88px; }
+  #btn-auto { width: 68px; height: 68px; right: 115px; }
 }
 </style>
 </head>
@@ -272,7 +252,6 @@ html, body {
 <div id="game-container">
   <canvas id="game-canvas"></canvas>
 
-  <!-- منوی اصلی -->
   <div id="menu-screen" class="screen active">
     <h1>نبرد ستاره‌ای</h1>
     <button class="menu-btn green"  data-action="start">شروع بازی</button>
@@ -283,14 +262,13 @@ html, body {
     <button class="menu-btn red"    data-action="quit">خروج</button>
   </div>
 
-  <!-- تنظیمات -->
   <div id="settings-screen" class="screen">
     <h1>تنظیمات</h1>
     <button class="menu-btn purple" id="diff-btn">سطح: آسون</button>
+    <button class="menu-btn green"  id="music-btn">🎵 موسیقی: روشن</button>
     <button class="menu-btn gray" data-action="back">بازگشت</button>
   </div>
 
-  <!-- انتخاب سفینه -->
   <div id="skin-screen" class="screen">
     <h1>سفینه‌ت رو انتخاب کن</h1>
     <button class="menu-btn blue"   data-skin="blue">آبی</button>
@@ -301,32 +279,27 @@ html, body {
     <button class="menu-btn gray"   data-action="back">بازگشت</button>
   </div>
 
-  <!-- رکوردها -->
   <div id="scores-screen" class="screen">
     <h1>🏆 رکوردها</h1>
     <div id="scores-list" class="help-text"></div>
     <button class="menu-btn gray" data-action="back">بازگشت</button>
   </div>
 
-  <!-- راهنما -->
   <div id="help-screen" class="screen">
     <h1>راهنما</h1>
     <div class="help-text">
       <p>🎮 <b>حرکت:</b> دکمه‌های جهت‌دار</p>
       <p>🔫 <b>شلیک:</b> دکمه FIRE</p>
-      <p>🤖 <b>AUTO:</b> شلیک خودکار (فقط حرکت کن!)</p>
+      <p>🤖 <b>AUTO:</b> شلیک خودکار</p>
       <p>💣 <b>BOMB:</b> نابودی همه دشمن‌ها</p>
-      <p>🔥 <b>COMBO:</b> پشت سر هم بزن، امتیاز ۵ برابر!</p>
-      <p>💜 <b>PLASMA:</b> گلوله بزرگ و قوی</p>
-      <p>⭐ <b>سه‌گانه:</b> ۳ تا گلوله همزمان</p>
-      <p>🛡️ <b>SHIELD:</b> ۱۰ ثانیه محافظ</p>
-      <p>👾 <b>دشمن‌ها:</b> قرمز عادی، نارنجی سریع، بنفش شلیک‌کن، سبز تانک</p>
-      <p>👹 <b>باس:</b> هر ۵ سطح، جایزه بمب!</p>
+      <p>🔥 <b>COMBO:</b> پشت سر هم بزن، امتیاز بیشتر</p>
+      <p>💜 <b>PLASMA:</b> گلوله بزرگ</p>
+      <p>👾 <b>دشمن‌ها:</b> قرمز، نارنجی، بنفش، سبز</p>
+      <p>👹 <b>باس:</b> هر ۵ سطح</p>
     </div>
     <button class="menu-btn gray" data-action="back">بازگشت</button>
   </div>
 
-  <!-- پایان بازی -->
   <div id="gameover-screen" class="screen">
     <h1 class="red-text">بازی تموم شد!</h1>
     <p class="final-score">امتیاز: <span id="final-score">0</span></p>
@@ -336,7 +309,6 @@ html, body {
     <button class="menu-btn gray"  data-action="menu">بازگشت به منو</button>
   </div>
 
-  <!-- HUD -->
   <div id="hud" class="hidden">
     <div class="hud-item">امتیاز: <span id="score">0</span></div>
     <div class="hud-item">سطح: <span id="level">1</span></div>
@@ -344,7 +316,6 @@ html, body {
   </div>
   <div id="combo-hud"></div>
 
-  <!-- کنترل‌ها -->
   <div id="touch-controls" class="hidden">
     <button class="ctrl-btn" id="btn-up">▲</button>
     <button class="ctrl-btn" id="btn-left">◀</button>
@@ -375,12 +346,115 @@ const COLORS = {
   cyan: '#50dcdc', gold: '#ffc832', plasma: '#ff64ff',
 };
 
+// ==================== صدا ====================
+let audioCtx = null;
+let musicPlaying = false;
+let musicTimer = null;
+let soundEnabled = true;
+
+function initAudio() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch (e) {}
+  }
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+}
+
+function playTone(freq, duration, type, volume) {
+  if (!audioCtx || !soundEnabled) return;
+  type = type || 'sine';
+  volume = volume || 0.1;
+  try {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = type;
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + duration);
+  } catch (e) {}
+}
+
+function playShoot() { playTone(800, 0.06, 'square', 0.04); }
+function playExplosion() {
+  if (!audioCtx || !soundEnabled) return;
+  try {
+    const bufferSize = audioCtx.sampleRate * 0.15;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / bufferSize);
+    }
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.12;
+    source.connect(gain);
+    gain.connect(audioCtx.destination);
+    source.start();
+  } catch (e) {}
+}
+function playPowerup() { playTone(1200, 0.12, 'sine', 0.08); }
+function playHit() { playTone(300, 0.12, 'square', 0.08); }
+function playLevelUp() { playTone(1000, 0.1, 'sine', 0.08); }
+
+const MUSIC_NOTES = [
+  330, 392, 440, 392, 330, 294, 262, 0,
+  294, 330, 392, 330, 294, 262, 220, 0,
+  262, 294, 330, 294, 262, 247, 220, 0,
+  247, 262, 330, 262, 247, 220, 196, 0,
+];
+
+let musicIndex = 0;
+
+function playMusicNote() {
+  if (!audioCtx || !musicPlaying) return;
+  const freq = MUSIC_NOTES[musicIndex % MUSIC_NOTES.length];
+  if (freq > 0) {
+    try {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.025, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    } catch (e) {}
+  }
+  musicIndex++;
+  musicTimer = setTimeout(playMusicNote, 350);
+}
+
+function startMusic() {
+  if (!audioCtx || musicPlaying) return;
+  musicPlaying = true;
+  musicIndex = 0;
+  playMusicNote();
+}
+
+function stopMusic() {
+  musicPlaying = false;
+  if (musicTimer) {
+    clearTimeout(musicTimer);
+    musicTimer = null;
+  }
+}
+
 // ==================== وضعیت ====================
 const STATE = { MENU: 'menu', PLAY: 'play', SETTINGS: 'settings', SKIN: 'skin',
                 SCORES: 'scores', HELP: 'help', GAMEOVER: 'gameover' };
 
 let state = STATE.MENU;
-let difficulty = 0;   // 0=آسون
+let difficulty = 0;
 let playerSkin = 'blue';
 let bestScore = parseInt(localStorage.getItem('sb_best') || '0');
 
@@ -410,16 +484,16 @@ class Player {
     this.w = 42; this.h = 50;
     this.x = canvas.width / 2 - this.w / 2;
     this.y = canvas.height - 300;
-    this.hp = 10;             // ✅ ۱۰ تا جون
+    this.hp = 10;
     this.maxHp = 10;
     this.cooldown = 0;
     this.tripleShot = 0;
     this.shield = 0;
     this.plasma = 0;
-    this.bombs = 5;           // ✅ ۵ تا بمب
+    this.bombs = 5;
   }
   update() {
-    const s = 7;              // ✅ سرعت خوب
+    const s = 7;
     if (input.left)  this.x -= s;
     if (input.right) this.x += s;
     if (input.up)    this.y -= s;
@@ -440,7 +514,6 @@ class Player {
                       pink: COLORS.pink, purple: COLORS.purple, orange: COLORS.orange };
       color = skins[playerSkin] || COLORS.lightBlue;
     }
-    // سایه
     ctx.shadowColor = color;
     ctx.shadowBlur = 15;
     ctx.fillStyle = color;
@@ -451,16 +524,13 @@ class Player {
     ctx.closePath();
     ctx.fill();
     ctx.shadowBlur = 0;
-
     ctx.strokeStyle = COLORS.white;
     ctx.lineWidth = 2;
     ctx.stroke();
-
     ctx.fillStyle = COLORS.white;
     ctx.beginPath();
     ctx.arc(this.x + this.w / 2, this.y + this.h / 2, 6, 0, Math.PI * 2);
     ctx.fill();
-
     if (this.shield > 0) {
       ctx.strokeStyle = COLORS.cyan;
       ctx.lineWidth = 3;
@@ -476,13 +546,13 @@ class Player {
 }
 
 class Bullet {
-  constructor(x, y, color, isEnemy = false, big = false, damage = 1) {
+  constructor(x, y, color, isEnemy, big, damage) {
     this.x = x; this.y = y;
     this.w = big ? 10 : 5;
     this.h = big ? 22 : 14;
     this.color = color || COLORS.yellow;
-    this.isEnemy = isEnemy;
-    this.damage = damage;
+    this.isEnemy = isEnemy || false;
+    this.damage = damage || 1;
   }
   update() { this.y += this.isEnemy ? 6 : -11; }
   draw() {
@@ -503,33 +573,47 @@ class Enemy {
     this.y = -this.h;
     this.type = type;
     this.shootTimer = 0;
-    this.shootDelay = 90 + Math.random() * 60;   // ✅ دیرتر شلیک
+    this.shootDelay = 90 + Math.random() * 60;
     this.hitFlash = 0;
+    // ✅ حرکت افقی
+    this.moveDir = Math.random() < 0.5 ? 1 : -1;
+    this.hSpeed = 0.6 + Math.random() * 1.4;
 
     if (type === 'normal') {
-      this.speed = 0.4 + Math.random() * 0.4 + level * 0.05;   // ✅ آروم‌تر
+      this.speed = 0.4 + Math.random() * 0.4 + level * 0.05;
       this.color = COLORS.red; this.hp = 1;
     } else if (type === 'fast') {
-      this.speed = 0.9 + Math.random() * 0.4 + level * 0.05;   // ✅ آروم‌تر
+      this.speed = 0.9 + Math.random() * 0.4 + level * 0.05;
       this.color = COLORS.orange; this.hp = 1;
+      this.hSpeed = 1.2 + Math.random() * 1.5;
     } else if (type === 'shooter') {
       this.speed = 0.3 + Math.random() * 0.3 + level * 0.05;
       this.color = COLORS.purple; this.hp = 2;
+      this.hSpeed = 0.5 + Math.random() * 1.2;
     } else if (type === 'tank') {
       this.speed = 0.3 + Math.random() * 0.2;
       this.color = COLORS.green; this.hp = 4;
       this.w = 50; this.h = 50;
+      this.hSpeed = 0.3 + Math.random() * 0.6;
     }
   }
   update() {
     this.y += this.speed;
+    // ✅ حرکت افقی
+    this.x += this.hSpeed * this.moveDir;
+    if (this.x <= 0) {
+      this.x = 0;
+      this.moveDir = 1;
+    } else if (this.x + this.w >= canvas.width) {
+      this.x = canvas.width - this.w;
+      this.moveDir = -1;
+    }
     if (this.hitFlash > 0) this.hitFlash--;
   }
   draw() {
     const color = this.hitFlash > 0 ? COLORS.white : this.color;
     ctx.shadowColor = color;
     ctx.shadowBlur = 10;
-
     if (this.type === 'tank') {
       ctx.fillStyle = color;
       ctx.fillRect(this.x, this.y, this.w, this.h);
@@ -537,7 +621,6 @@ class Enemy {
       ctx.strokeStyle = COLORS.white;
       ctx.lineWidth = 2;
       ctx.strokeRect(this.x, this.y, this.w, this.h);
-      // نوار جان
       if (this.hp > 1) {
         ctx.fillStyle = COLORS.darkRed;
         ctx.fillRect(this.x + 5, this.y - 8, this.w - 10, 4);
@@ -557,7 +640,6 @@ class Enemy {
       ctx.lineWidth = 2;
       ctx.stroke();
     }
-
     if (this.type === 'shooter') {
       ctx.fillStyle = COLORS.yellow;
       ctx.beginPath();
@@ -602,7 +684,6 @@ class Boss {
     ctx.strokeStyle = COLORS.white;
     ctx.lineWidth = 3;
     ctx.strokeRect(this.x, this.y, this.w, this.h);
-
     ctx.fillStyle = COLORS.red;
     ctx.shadowColor = COLORS.red;
     ctx.shadowBlur = 20;
@@ -613,8 +694,6 @@ class Boss {
     ctx.strokeStyle = COLORS.white;
     ctx.lineWidth = 2;
     ctx.stroke();
-
-    // نوار جان
     const barW = canvas.width * 0.7, barH = 14;
     const barX = canvas.width / 2 - barW / 2, barY = 42;
     ctx.fillStyle = COLORS.darkRed;
@@ -624,7 +703,6 @@ class Boss {
     ctx.strokeStyle = COLORS.white;
     ctx.lineWidth = 2;
     ctx.strokeRect(barX, barY, barW, barH);
-
     ctx.fillStyle = COLORS.white;
     ctx.font = 'bold 14px Arial';
     ctx.textAlign = 'center';
@@ -634,14 +712,15 @@ class Boss {
 }
 
 class Particle {
-  constructor(x, y, color, count = 15) {
+  constructor(x, y, color, count) {
+    count = count || 15;
     this.list = [];
     for (let i = 0; i < count; i++) {
       const a = Math.random() * Math.PI * 2;
       const s = 2 + Math.random() * 5;
       this.list.push({
-        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
-        life: 40, maxLife: 40, color, size: 2 + Math.random() * 3
+        x: x, y: y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+        life: 40, maxLife: 40, color: color, size: 2 + Math.random() * 3
       });
     }
   }
@@ -684,7 +763,6 @@ class PowerUp {
                      shield: COLORS.blue, plasma: COLORS.plasma };
     const color = colors[this.kind] || COLORS.red;
     const size = this.size / 2 + Math.sin(this.pulse) * 3;
-
     ctx.shadowColor = color;
     ctx.shadowBlur = 20;
     ctx.fillStyle = color;
@@ -697,7 +775,6 @@ class PowerUp {
     ctx.beginPath();
     ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
     ctx.stroke();
-
     ctx.fillStyle = COLORS.white;
     ctx.font = 'bold 16px Arial';
     ctx.textAlign = 'center';
@@ -712,7 +789,7 @@ class PowerUp {
 
 class Star {
   constructor() { this.reset(true); }
-  reset(initial = false) {
+  reset(initial) {
     this.x = Math.random() * canvas.width;
     this.y = initial ? Math.random() * canvas.height : 0;
     this.speed = 0.5 + Math.random() * 1.5;
@@ -740,7 +817,7 @@ class Star {
 // ==================== داده‌ها ====================
 let player, bullets, enemyBullets, enemies, powerups, particles, stars;
 let boss, score, spawnTimer, spawnDelay, powerupTimer, level, bossSpawned;
-let combo, comboTimer, maxCombo, bgHue = 0;
+let combo, comboTimer, maxCombo;
 
 function initStars() {
   stars = [];
@@ -752,16 +829,18 @@ function rectsCollide(a, b) {
 }
 
 function startGame() {
+  initAudio();
   player = new Player();
   bullets = []; enemyBullets = []; enemies = []; powerups = []; particles = [];
   boss = null; score = 0; spawnTimer = 0;
-  spawnDelay = [120, 90, 60][difficulty];   // ✅ دیرتر میان
+  spawnDelay = [120, 90, 60][difficulty];
   powerupTimer = 0; level = 1; bossSpawned = false;
   combo = 0; comboTimer = 0; maxCombo = 0;
   state = STATE.PLAY;
   showScreen(null);
   document.getElementById('hud').classList.remove('hidden');
   document.getElementById('touch-controls').classList.remove('hidden');
+  startMusic();
 }
 
 function goToMenu() {
@@ -770,6 +849,7 @@ function goToMenu() {
   document.getElementById('hud').classList.add('hidden');
   document.getElementById('touch-controls').classList.add('hidden');
   document.getElementById('combo-hud').style.display = 'none';
+  stopMusic();
 }
 
 function showScreen(id) {
@@ -789,6 +869,7 @@ function gameOver() {
   document.getElementById('touch-controls').classList.add('hidden');
   document.getElementById('combo-hud').style.display = 'none';
   saveScore(score);
+  stopMusic();
 }
 
 function saveScore(sc) {
@@ -808,14 +889,13 @@ function drawBackground() {
 function updateHUD() {
   document.getElementById('score').textContent = score;
   document.getElementById('level').textContent = level;
-  const stars = '*'.repeat(Math.max(0, player.hp));
-  document.getElementById('hp').textContent = stars;
+  document.getElementById('hp').textContent = '*'.repeat(Math.max(0, player.hp));
 }
 
 function updateComboHUD() {
   const el = document.getElementById('combo-hud');
   if (combo > 1) {
-    el.textContent = `x${combo} COMBO!`;
+    el.textContent = 'x' + combo + ' COMBO!';
     el.style.display = 'block';
     if (combo >= 10) el.style.color = COLORS.gold;
     else if (combo >= 5) el.style.color = COLORS.yellow;
@@ -831,7 +911,6 @@ function gameLoop() {
 
   if (state === STATE.PLAY && player) {
     drawBackground();
-
     player.update();
 
     const firing = input.fire || input.auto;
@@ -847,6 +926,7 @@ function gameLoop() {
         bullets.push(new Bullet(player.x + player.w * 0.75 - 2, player.y, COLORS.cyan));
       }
       player.cooldown = 8;
+      playShoot();
     }
 
     for (let i = bullets.length - 1; i >= 0; i--) {
@@ -858,13 +938,11 @@ function gameLoop() {
       if (enemyBullets[i].offScreen()) enemyBullets.splice(i, 1);
     }
 
-    // اسپاون دشمن
     if (!boss) {
       spawnTimer++;
       if (spawnTimer >= spawnDelay) {
         const r = Math.random();
         let type = 'normal';
-        // ✅ دشمن‌های سخت‌تر دیرتر میان
         if (level >= 8 && r < 0.03) type = 'shooter';
         else if (level >= 6 && r < 0.12) type = 'tank';
         else if (level >= 4 && r < 0.30) type = 'fast';
@@ -873,7 +951,6 @@ function gameLoop() {
       }
     }
 
-    // پاورآپ — ✅ قلب بیشتر
     powerupTimer++;
     if (powerupTimer >= 400) {
       const kinds = ['heart', 'heart', 'heart', 'heart', 'triple', 'shield', 'plasma'];
@@ -882,7 +959,6 @@ function gameLoop() {
       powerupTimer = 0;
     }
 
-    // دشمن‌ها
     for (let i = enemies.length - 1; i >= 0; i--) {
       const e = enemies[i];
       e.update();
@@ -897,12 +973,12 @@ function gameLoop() {
         enemies.splice(i, 1);
         if (player.shield <= 0) {
           player.hp--;
+          playHit();
           if (player.hp <= 0) return gameOver();
         }
       }
     }
 
-    // باس
     if (boss) {
       boss.update();
       boss.shootTimer++;
@@ -914,19 +990,16 @@ function gameLoop() {
       }
     }
 
-    // پاورآپ‌ها
     for (let i = powerups.length - 1; i >= 0; i--) {
       powerups[i].update();
       if (powerups[i].offScreen()) powerups.splice(i, 1);
     }
 
-    // ذرات
     for (let i = particles.length - 1; i >= 0; i--) {
       particles[i].update();
       if (particles[i].dead()) particles.splice(i, 1);
     }
 
-    // برخورد گلوله با دشمن
     for (let i = bullets.length - 1; i >= 0; i--) {
       const b = bullets[i];
       let removed = false;
@@ -943,7 +1016,8 @@ function gameLoop() {
             combo++;
             comboTimer = 100;
             if (combo > maxCombo) maxCombo = combo;
-            score += 10 * Math.min(combo, 5);   // ✅ امتیاز ۵ برابر با کمبو
+            score += 10 * Math.min(combo, 5);
+            playExplosion();
           }
           break;
         }
@@ -953,6 +1027,7 @@ function gameLoop() {
         bullets.splice(i, 1);
         boss.hp -= b.damage;
         boss.hitFlash = 5;
+        playHit();
         if (boss.hp <= 0) {
           particles.push(new Particle(boss.x + boss.w / 2, boss.y + boss.h / 2, COLORS.gold, 50));
           score += 200;
@@ -961,23 +1036,23 @@ function gameLoop() {
           level++;
           spawnDelay = Math.max(30, spawnDelay - 5);
           player.bombs++;
+          playLevelUp();
         }
       }
     }
 
-    // گلوله دشمن با بازیکن
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
       if (rectsCollide(enemyBullets[i].rect(), player.rect())) {
         enemyBullets.splice(i, 1);
         if (player.shield <= 0) {
           player.hp--;
           combo = 0;
+          playHit();
           if (player.hp <= 0) return gameOver();
         }
       }
     }
 
-    // دشمن با بازیکن
     for (let i = enemies.length - 1; i >= 0; i--) {
       if (rectsCollide(enemies[i].rect(), player.rect())) {
         particles.push(new Particle(enemies[i].x + 18, enemies[i].y + 18, enemies[i].color, 10));
@@ -985,12 +1060,12 @@ function gameLoop() {
         if (player.shield <= 0) {
           player.hp--;
           combo = 0;
+          playHit();
           if (player.hp <= 0) return gameOver();
         }
       }
     }
 
-    // پاورآپ
     for (let i = powerups.length - 1; i >= 0; i--) {
       const p = powerups[i];
       if (rectsCollide(p.rect(), player.rect())) {
@@ -1000,6 +1075,7 @@ function gameLoop() {
         else if (p.kind === 'plasma') player.plasma = 600;
         powerups.splice(i, 1);
         score += 5;
+        playPowerup();
       }
     }
 
@@ -1011,6 +1087,7 @@ function gameLoop() {
       level = newLevel;
       spawnDelay = Math.max(30, spawnDelay - 5);
       if (level % 5 === 0) player.bombs++;
+      playLevelUp();
     }
     if (level % 5 === 0 && !boss && !bossSpawned) {
       boss = new Boss(level);
@@ -1018,7 +1095,6 @@ function gameLoop() {
       enemies = [];
     }
 
-    // رسم
     for (const b of bullets) b.draw();
     for (const b of enemyBullets) b.draw();
     for (const e of enemies) e.draw();
@@ -1039,6 +1115,7 @@ function gameLoop() {
 // ==================== دکمه‌های منو ====================
 document.querySelectorAll('[data-action]').forEach(btn => {
   btn.addEventListener('click', () => {
+    initAudio();
     const action = btn.dataset.action;
     if (action === 'start') startGame();
     else if (action === 'settings') { state = STATE.SETTINGS; showScreen('settings-screen'); }
@@ -1070,6 +1147,14 @@ document.getElementById('diff-btn').addEventListener('click', () => {
   document.getElementById('diff-btn').textContent = 'سطح: ' + names[difficulty];
 });
 
+document.getElementById('music-btn').addEventListener('click', () => {
+  initAudio();
+  soundEnabled = !soundEnabled;
+  document.getElementById('music-btn').textContent = soundEnabled ? '🎵 موسیقی: روشن' : '🔇 موسیقی: خاموش';
+  if (!soundEnabled) stopMusic();
+  else if (state === STATE.PLAY) startMusic();
+});
+
 function showScores() {
   const scores = JSON.parse(localStorage.getItem('sb_scores') || '[]');
   const list = document.getElementById('scores-list');
@@ -1078,7 +1163,7 @@ function showScores() {
   } else {
     const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
     list.innerHTML = scores.map((s, i) =>
-      `<p>${medals[i]} امتیاز: <b>${s}</b></p>`
+      '<p>' + medals[i] + ' امتیاز: <b>' + s + '</b></p>'
     ).join('');
   }
 }
@@ -1093,7 +1178,7 @@ const touchMap = {
 Object.keys(touchMap).forEach(id => {
   const btn = document.getElementById(id);
   const key = touchMap[id];
-  const press = e => { e.preventDefault(); input[key] = true; btn.classList.add('pressed'); };
+  const press = e => { e.preventDefault(); initAudio(); input[key] = true; btn.classList.add('pressed'); };
   const release = e => { e.preventDefault(); input[key] = false; btn.classList.remove('pressed'); };
   btn.addEventListener('touchstart', press, { passive: false });
   btn.addEventListener('touchend', release, { passive: false });
@@ -1105,6 +1190,7 @@ Object.keys(touchMap).forEach(id => {
 
 const autoBtn = document.getElementById('btn-auto');
 autoBtn.addEventListener('click', () => {
+  initAudio();
   input.auto = !input.auto;
   autoBtn.classList.toggle('on', input.auto);
 });
@@ -1125,6 +1211,7 @@ const bombPress = e => {
       boss.hp -= 5;
       boss.hitFlash = 10;
     }
+    playExplosion();
   }
   setTimeout(() => bombBtn.classList.remove('pressed'), 150);
 };
@@ -1137,4 +1224,4 @@ initStars();
 gameLoop();
 </script>
 </body>
-    </html>
+  </html>
