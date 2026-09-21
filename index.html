@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Star Battle - نبرد ستاره‌ای</title>
+<style>
+* {
+  margin: 0; padding: 0; box-sizing: border-box;
+  font-family: Tahoma, Arial, sans-serif;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100%; height: 100%;
+  background: #06060f;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  touch-action: none;
+}
+
+#game-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  max-width: 600px;
+  background: #000;
+  overflow: hidden;
+  box-shadow: 0 0 60px rgba(80, 150, 255, 0.3);
+}
+
+#game-canvas {
+  display: block;
+  width: 100%; height: 100%;
+  touch-action: none;
+}
+
+/* ============ صفحه‌ها ============ */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: linear-gradient(180deg, #0a0a1f 0%, #101030 100%);
+  text-align: center;
+  z-index: 10;
+  overflow-y: auto;
+}
+
+.screen.active { display: flex; }
+
+.screen h1 {
+  color: #ffdc3c;
+  font-size: 34px;
+  text-shadow: 0 0 25px rgba(255, 220, 60, 0.7);
+  margin-bottom: 5px;
+  animation: glow 2s infinite alternate;
+}
+
+@keyframes glow {
+  from { text-shadow: 0 0 15px rgba(255, 220, 60, 0.5); }
+  to   { text-shadow: 0 0 35px rgba(255, 220, 60, 1); }
+}
+
+.screen h1.red-text {
+  color: #ff5050;
+  text-shadow: 0 0 25px rgba(255, 80, 80, 0.7);
+}
+
+.menu-btn {
+  width: 90%;
+  max-width: 320px;
+  padding: 15px 20px;
+  border: none;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.15s, filter 0.15s, box-shadow 0.15s;
+  box-shadow: 0 4px 0 rgba(0,0,0,0.4), 0 0 20px rgba(255,255,255,0.05);
+}
+
+.menu-btn:active {
+  transform: translateY(3px);
+  filter: brightness(1.2);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.4);
+}
+
+.menu-btn.green  { background: linear-gradient(180deg, #3aa864, #2a7d4a); }
+.menu-btn.blue   { background: linear-gradient(180deg, #4a7fd0, #2f5da0); }
+.menu-btn.orange { background: linear-gradient(180deg, #d08a3a, #a06520); }
+.menu-btn.red    { background: linear-gradient(180deg, #d04a4a, #a02a2a); }
+.menu-btn.purple { background: linear-gradient(180deg, #8a4ad0, #5f2fa0); }
+.menu-btn.gray   { background: linear-gradient(180deg, #6a6a80, #4a4a5a); }
+.menu-btn.pink   { background: linear-gradient(180deg, #d04a9a, #a02a6a); }
+.menu-btn.gold   { background: linear-gradient(180deg, #d0b03a, #a08820); }
+
+.help-text {
+  color: #e0e0e0;
+  font-size: 14px;
+  line-height: 1.9;
+  text-align: right;
+  background: rgba(255,255,255,0.05);
+  padding: 16px;
+  border-radius: 14px;
+  max-width: 90%;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.help-text b { color: #ffdc3c; }
+.help-text p { margin: 4px 0; }
+
+.final-score { color: #fff; font-size: 22px; }
+.final-score span { color: #ffdc3c; font-weight: bold; font-size: 26px; }
+.best-score { color: #aaa; font-size: 16px; }
+.best-score span { color: #4ad07a; font-weight: bold; }
+.combo-score { color: #ffdc3c; font-size: 18px; font-weight: bold; }
+
+/* ============ HUD ============ */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 14px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.hud-item {
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  background: rgba(0,0,0,0.55);
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.15);
+  backdrop-filter: blur(4px);
+}
+
+#hp { color: #ff5050; }
+
+#combo-hud {
+  position: absolute;
+  top: 55px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffdc3c;
+  font-size: 22px;
+  font-weight: bold;
+  text-shadow: 0 0 15px rgba(255, 220, 60, 0.8);
+  z-index: 5;
+  pointer-events: none;
+  display: none;
+  animation: pulse 0.4s infinite alternate;
+}
+
+@keyframes pulse {
+  from { transform: translateX(-50%) scale(1); }
+  to   { transform: translateX(-50%) scale(1.15); }
+}
+
+/* ============ کنترل‌ها ============ */
+#touch-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+}
+
+.ctrl-btn {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.5);
+  background: rgba(80, 150, 255, 0.3);
+  color: #fff;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  touch-action: none;
+  pointer-events: auto;
+  transition: background 0.08s, transform 0.08s, box-shadow 0.1s;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(4px);
+  -webkit-user-select: none;
+}
+
+.ctrl-btn:active, .ctrl-btn.pressed {
+  background: rgba(80, 150, 255, 0.85);
+  transform: scale(0.9);
+  box-shadow: 0 0 20px rgba(80, 150, 255, 0.8);
+}
+
+#btn-up    { left: calc(50% - 110px); bottom: 170px; width: 72px; height: 72px; }
+#btn-left  { left: 20px; bottom: 100px; width: 72px; height: 72px; }
+#btn-down  { left: calc(50% - 110px); bottom: 100px; width: 72px; height: 72px; }
+#btn-right { left: calc(50% - 40px); bottom: 100px; width: 72px; height: 72px; }
+
+#btn-fire {
+  right: 20px; bottom: 40px;
+  width: 100px; height: 100px;
+  background: rgba(220, 50, 50, 0.45);
+  border-color: rgba(255, 100, 100, 0.8);
+  font-size: 16px;
+}
+
+#btn-fire:active, #btn-fire.pressed {
+  background: rgba(255, 80, 80, 0.95);
+  box-shadow: 0 0 30px rgba(255, 80, 80, 0.9);
+}
+
+#btn-auto {
+  right: 130px; bottom: 40px;
+  width: 80px; height: 80px;
+  background: rgba(60, 160, 90, 0.4);
+  border-color: rgba(100, 255, 130, 0.7);
+  font-size: 14px;
+}
+
+#btn-auto.on {
+  background: rgba(60, 255, 90, 0.9);
+  box-shadow: 0 0 25px rgba(60, 255, 90, 0.9);
+  animation: autoPulse 0.8s infinite alternate;
+}
+
+@keyframes autoPulse {
+  from { box-shadow: 0 0 15px rgba(60, 255, 90, 0.7); }
+  to   { box-shadow: 0 0 35px rgba(60, 255, 90, 1); }
+}
+
+#btn-bomb {
+  left: 20px; bottom: 190px;
+  width: 85px; height: 85px;
+  background: rgba(220, 130, 40, 0.4);
+  border-color: rgba(255, 180, 80, 0.7);
+  font-size: 14px;
+}
+
+#btn-bomb:active, #btn-bomb.pressed {
+  background: rgba(255, 150, 50, 0.95);
+  box-shadow: 0 0 30px rgba(255, 150, 50, 0.9);
+}
+
+.hidden { display: none !important; }
+
+/* ============ موبایل کوچک ============ */
+@media (max-height: 700px) {
+  .screen h1 { font-size: 26px; }
+  .menu-btn { padding: 11px 16px; font-size: 16px; }
+  #btn-up { bottom: 145px; width: 60px; height: 60px; left: calc(50% - 95px); }
+  #btn-left { bottom: 85px; width: 60px; height: 60px; }
+  #btn-down { bottom: 85px; width: 60px; height: 60px; left: calc(50% - 95px); }
+  #btn-right { bottom: 85px; width: 60px; height: 60px; left: calc(50% - 35px); }
+  #btn-fire { width: 85px; height: 85px; }
+  #btn-auto { width: 65px; height: 65px; right: 115px; }
+  #btn-bomb { width: 70px; height: 70px; bottom: 155px; }
+}
+</style>
+</head>
+<body>
+
+<div id="game-container">
+  <canvas id="game-canvas"></canvas>
+
+  <!-- منوی اصلی -->
+  <div id="menu-screen" class="screen active">
+    <h1>نبرد ستاره‌ای</h1>
+    <button class="menu-btn green"  data-action="start">شروع بازی</button>
+    <button class="menu-btn pink"   data-action="skin">انتخاب سفینه</button>
+    <button class="menu-btn gold"   data-action="scores">🏆 رکوردها</button>
+    <button class="menu-btn blue"   data-action="settings">تنظیمات</button>
+    <button class="menu-btn orange" data-action="help">راهنما</button>
+    <button class="menu-btn red"    data-action="quit">خروج</button>
+  </div>
+
+  <!-- تنظیمات -->
+  <div id="settings-screen" class="screen">
+    <h1>تنظیمات</h1>
+    <button class="menu-btn purple" id="diff-btn">سطح: آسون</button>
+    <button class="menu-btn gray" data-action="back">بازگشت</button>
+  </div>
+
+  <!-- انتخاب سفینه -->
+  <div id="skin-screen" class="screen">
+    <h1>سفینه‌ت رو انتخاب کن</h1>
+    <button class="menu-btn blue"   data-skin="blue">آبی</button>
+    <button class="menu-btn green"  data-skin="green">سبز</button>
+    <button class="menu-btn pink"   data-skin="pink">صورتی</button>
+    <button class="menu-btn purple" data-skin="purple">بنفش</button>
+    <button class="menu-btn orange" data-skin="orange">نارنجی</button>
+    <button class="menu-btn gray"   data-action="back">بازگشت</button>
+  </div>
+
+  <!-- رکوردها -->
+  <div id="scores-screen" class="screen">
+    <h1>🏆 رکوردها</h1>
+    <div id="scores-list" class="help-text"></div>
+    <button class="menu-btn gray" data-action="back">بازگشت</button>
+  </div>
+
+  <!-- راهنما -->
+  <div id="help-screen" class="screen">
+    <h1>راهنما</h1>
+    <div class="help-text">
+      <p>🎮 <b>حرکت:</b> دکمه‌های جهت‌دار</p>
+      <p>🔫 <b>شلیک:</b> دکمه FIRE</p>
+      <p>🤖 <b>AUTO:</b> شلیک خودکار (فقط حرکت کن!)</p>
+      <p>💣 <b>BOMB:</b> نابودی همه دشمن‌ها</p>
+      <p>🔥 <b>COMBO:</b> پشت سر هم بزن، امتیاز ۵ برابر!</p>
+      <p>💜 <b>PLASMA:</b> گلوله بزرگ و قوی</p>
+      <p>⭐ <b>سه‌گانه:</b> ۳ تا گلوله همزمان</p>
+      <p>🛡️ <b>SHIELD:</b> ۱۰ ثانیه محافظ</p>
+      <p>👾 <b>دشمن‌ها:</b> قرمز عادی، نارنجی سریع، بنفش شلیک‌کن، سبز تانک</p>
+      <p>👹 <b>باس:</b> هر ۵ سطح، جایزه بمب!</p>
+    </div>
+    <button class="menu-btn gray" data-action="back">بازگشت</button>
+  </div>
+
+  <!-- پایان بازی -->
+  <div id="gameover-screen" class="screen">
+    <h1 class="red-text">بازی تموم شد!</h1>
+    <p class="final-score">امتیاز: <span id="final-score">0</span></p>
+    <p class="combo-score">بیشترین کمبو: x<span id="max-combo">0</span></p>
+    <p class="best-score">بهترین رکورد: <span id="best-score">0</span></p>
+    <button class="menu-btn green" data-action="restart">تلاش مجدد</button>
+    <button class="menu-btn gray"  data-action="menu">بازگشت به منو</button>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div class="hud-item">امتیاز: <span id="score">0</span></div>
+    <div class="hud-item">سطح: <span id="level">1</span></div>
+    <div class="hud-item">جان: <span id="hp">**********</span></div>
+  </div>
+  <div id="combo-hud"></div>
+
+  <!-- کنترل‌ها -->
+  <div id="touch-controls" class="hidden">
+    <button class="ctrl-btn" id="btn-up">▲</button>
+    <button class="ctrl-btn" id="btn-left">◀</button>
+    <button class="ctrl-btn" id="btn-right">▶</button>
+    <button class="ctrl-btn" id="btn-down">▼</button>
+    <button class="ctrl-btn" id="btn-fire">FIRE</button>
+    <button class="ctrl-btn" id="btn-auto">AUTO</button>
+    <button class="ctrl-btn" id="btn-bomb">BOMB</button>
+  </div>
+</div>
+
+<script>
+// ==================== تنظیمات پایه ====================
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
+}
+window.addEventListener('resize', resizeCanvas);
+
+const COLORS = {
+  bg: '#06060f', white: '#ffffff', red: '#dc3232', darkRed: '#96201e',
+  blue: '#5096ff', lightBlue: '#64aaff', yellow: '#ffdc3c', gray: '#78788c',
+  green: '#3cc85a', purple: '#b450dc', orange: '#ff9632', pink: '#ff64b4',
+  cyan: '#50dcdc', gold: '#ffc832', plasma: '#ff64ff',
+};
+
+// ==================== وضعیت ====================
+const STATE = { MENU: 'menu', PLAY: 'play', SETTINGS: 'settings', SKIN: 'skin',
+                SCORES: 'scores', HELP: 'help', GAMEOVER: 'gameover' };
+
+let state = STATE.MENU;
+let difficulty = 0;   // 0=آسون
+let playerSkin = 'blue';
+let bestScore = parseInt(localStorage.getItem('sb_best') || '0');
+
+// ==================== ورودی ====================
+const input = { left: false, right: false, up: false, down: false, fire: false, auto: false };
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') { input.fire = true; e.preventDefault(); }
+  if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') input.left = true;
+  if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') input.right = true;
+  if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') input.up = true;
+  if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') input.down = true;
+  if (e.key === 'Escape' && state === STATE.PLAY) goToMenu();
+});
+
+window.addEventListener('keyup', e => {
+  if (e.code === 'Space') input.fire = false;
+  if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') input.left = false;
+  if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') input.right = false;
+  if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') input.up = false;
+  if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') input.down = false;
+});
+
+// ==================== کلاس‌ها ====================
+class Player {
+  constructor() {
+    this.w = 42; this.h = 50;
+    this.x = canvas.width / 2 - this.w / 2;
+    this.y = canvas.height - 300;
+    this.hp = 10;             // ✅ ۱۰ تا جون
+    this.maxHp = 10;
+    this.cooldown = 0;
+    this.tripleShot = 0;
+    this.shield = 0;
+    this.plasma = 0;
+    this.bombs = 5;           // ✅ ۵ تا بمب
+  }
+  update() {
+    const s = 7;              // ✅ سرعت خوب
+    if (input.left)  this.x -= s;
+    if (input.right) this.x += s;
+    if (input.up)    this.y -= s;
+    if (input.down)  this.y += s;
+    this.x = Math.max(5, Math.min(canvas.width - this.w - 5, this.x));
+    this.y = Math.max(60, Math.min(canvas.height - 180, this.y));
+    if (this.cooldown > 0) this.cooldown--;
+    if (this.tripleShot > 0) this.tripleShot--;
+    if (this.shield > 0) this.shield--;
+    if (this.plasma > 0) this.plasma--;
+  }
+  draw() {
+    let color = COLORS.lightBlue;
+    if (this.plasma > 0) color = COLORS.plasma;
+    else if (this.tripleShot > 0) color = COLORS.gold;
+    else {
+      const skins = { blue: COLORS.lightBlue, green: COLORS.green,
+                      pink: COLORS.pink, purple: COLORS.purple, orange: COLORS.orange };
+      color = skins[playerSkin] || COLORS.lightBlue;
+    }
+    // سایه
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(this.x + this.w / 2, this.y);
+    ctx.lineTo(this.x, this.y + this.h);
+    ctx.lineTo(this.x + this.w, this.y + this.h);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.strokeStyle = COLORS.white;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    ctx.fillStyle = COLORS.white;
+    ctx.beginPath();
+    ctx.arc(this.x + this.w / 2, this.y + this.h / 2, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (this.shield > 0) {
+      ctx.strokeStyle = COLORS.cyan;
+      ctx.lineWidth = 3;
+      ctx.shadowColor = COLORS.cyan;
+      ctx.shadowBlur = 20;
+      ctx.beginPath();
+      ctx.arc(this.x + this.w / 2, this.y + this.h / 2, this.w * 0.9, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+  }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+class Bullet {
+  constructor(x, y, color, isEnemy = false, big = false, damage = 1) {
+    this.x = x; this.y = y;
+    this.w = big ? 10 : 5;
+    this.h = big ? 22 : 14;
+    this.color = color || COLORS.yellow;
+    this.isEnemy = isEnemy;
+    this.damage = damage;
+  }
+  update() { this.y += this.isEnemy ? 6 : -11; }
+  draw() {
+    ctx.shadowColor = this.color;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.x, this.y, this.w, this.h);
+    ctx.shadowBlur = 0;
+  }
+  offScreen() { return this.isEnemy ? this.y > canvas.height : this.y < -20; }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+class Enemy {
+  constructor(level, type) {
+    this.w = 36; this.h = 36;
+    this.x = Math.random() * (canvas.width - this.w);
+    this.y = -this.h;
+    this.type = type;
+    this.shootTimer = 0;
+    this.shootDelay = 90 + Math.random() * 60;   // ✅ دیرتر شلیک
+    this.hitFlash = 0;
+
+    if (type === 'normal') {
+      this.speed = 0.4 + Math.random() * 0.4 + level * 0.05;   // ✅ آروم‌تر
+      this.color = COLORS.red; this.hp = 1;
+    } else if (type === 'fast') {
+      this.speed = 0.9 + Math.random() * 0.4 + level * 0.05;   // ✅ آروم‌تر
+      this.color = COLORS.orange; this.hp = 1;
+    } else if (type === 'shooter') {
+      this.speed = 0.3 + Math.random() * 0.3 + level * 0.05;
+      this.color = COLORS.purple; this.hp = 2;
+    } else if (type === 'tank') {
+      this.speed = 0.3 + Math.random() * 0.2;
+      this.color = COLORS.green; this.hp = 4;
+      this.w = 50; this.h = 50;
+    }
+  }
+  update() {
+    this.y += this.speed;
+    if (this.hitFlash > 0) this.hitFlash--;
+  }
+  draw() {
+    const color = this.hitFlash > 0 ? COLORS.white : this.color;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 10;
+
+    if (this.type === 'tank') {
+      ctx.fillStyle = color;
+      ctx.fillRect(this.x, this.y, this.w, this.h);
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = COLORS.white;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(this.x, this.y, this.w, this.h);
+      // نوار جان
+      if (this.hp > 1) {
+        ctx.fillStyle = COLORS.darkRed;
+        ctx.fillRect(this.x + 5, this.y - 8, this.w - 10, 4);
+        ctx.fillStyle = COLORS.green;
+        ctx.fillRect(this.x + 5, this.y - 8, (this.w - 10) * (this.hp / 4), 4);
+      }
+    } else {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(this.x + this.w / 2, this.y + this.h);
+      ctx.lineTo(this.x, this.y);
+      ctx.lineTo(this.x + this.w, this.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = COLORS.white;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    if (this.type === 'shooter') {
+      ctx.fillStyle = COLORS.yellow;
+      ctx.beginPath();
+      ctx.arc(this.x + this.w / 2, this.y + this.h / 2, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  offScreen() { return this.y > canvas.height; }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+class Boss {
+  constructor(level) {
+    this.w = 150; this.h = 110;
+    this.x = canvas.width / 2 - this.w / 2;
+    this.y = -this.h;
+    this.maxHp = 20 + level * 5;
+    this.hp = this.maxHp;
+    this.shootTimer = 0;
+    this.shootDelay = 70;
+    this.moveDir = 1;
+    this.entering = true;
+    this.hitFlash = 0;
+  }
+  update() {
+    if (this.hitFlash > 0) this.hitFlash--;
+    if (this.entering) {
+      this.y += 2;
+      if (this.y >= 60) this.entering = false;
+    } else {
+      this.x += 1.5 * this.moveDir;
+      if (this.x <= 0 || this.x + this.w >= canvas.width) this.moveDir *= -1;
+    }
+  }
+  draw() {
+    const color = this.hitFlash > 0 ? COLORS.white : COLORS.purple;
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 25;
+    ctx.fillStyle = color;
+    ctx.fillRect(this.x, this.y, this.w, this.h);
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = COLORS.white;
+    ctx.lineWidth = 3;
+    ctx.strokeRect(this.x, this.y, this.w, this.h);
+
+    ctx.fillStyle = COLORS.red;
+    ctx.shadowColor = COLORS.red;
+    ctx.shadowBlur = 20;
+    ctx.beginPath();
+    ctx.arc(this.x + this.w / 2, this.y + this.h / 2, 22, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = COLORS.white;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // نوار جان
+    const barW = canvas.width * 0.7, barH = 14;
+    const barX = canvas.width / 2 - barW / 2, barY = 42;
+    ctx.fillStyle = COLORS.darkRed;
+    ctx.fillRect(barX, barY, barW, barH);
+    ctx.fillStyle = COLORS.red;
+    ctx.fillRect(barX, barY, barW * (this.hp / this.maxHp), barH);
+    ctx.strokeStyle = COLORS.white;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(barX, barY, barW, barH);
+
+    ctx.fillStyle = COLORS.white;
+    ctx.font = 'bold 14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('BOSS', canvas.width / 2, barY + barH + 18);
+  }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+class Particle {
+  constructor(x, y, color, count = 15) {
+    this.list = [];
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const s = 2 + Math.random() * 5;
+      this.list.push({
+        x, y, vx: Math.cos(a) * s, vy: Math.sin(a) * s,
+        life: 40, maxLife: 40, color, size: 2 + Math.random() * 3
+      });
+    }
+  }
+  update() {
+    for (const p of this.list) {
+      p.x += p.vx; p.y += p.vy;
+      p.vx *= 0.94; p.vy *= 0.94;
+      p.life--;
+    }
+  }
+  draw() {
+    for (const p of this.list) {
+      if (p.life > 0) {
+        const alpha = p.life / p.maxLife;
+        ctx.globalAlpha = alpha;
+        ctx.shadowColor = p.color;
+        ctx.shadowBlur = 15;
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+  }
+  dead() { return this.list.every(p => p.life <= 0); }
+}
+
+class PowerUp {
+  constructor(x, y, kind) {
+    this.x = x; this.y = y; this.kind = kind;
+    this.size = 34;
+    this.speed = 2;
+    this.pulse = 0;
+  }
+  update() { this.y += this.speed; this.pulse += 0.15; }
+  draw() {
+    const colors = { heart: COLORS.red, triple: COLORS.gold,
+                     shield: COLORS.blue, plasma: COLORS.plasma };
+    const color = colors[this.kind] || COLORS.red;
+    const size = this.size / 2 + Math.sin(this.pulse) * 3;
+
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 20;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = COLORS.white;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = COLORS.white;
+    ctx.font = 'bold 16px Arial';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    const labels = { heart: '+', triple: '3', shield: 'S', plasma: 'P' };
+    ctx.fillText(labels[this.kind] || '?', this.x, this.y);
+  }
+  offScreen() { return this.y > canvas.height; }
+  rect() { return { x: this.x - this.size / 2, y: this.y - this.size / 2,
+                    w: this.size, h: this.size }; }
+}
+
+class Star {
+  constructor() { this.reset(true); }
+  reset(initial = false) {
+    this.x = Math.random() * canvas.width;
+    this.y = initial ? Math.random() * canvas.height : 0;
+    this.speed = 0.5 + Math.random() * 1.5;
+    this.size = Math.random() < 0.7 ? 1 : 2;
+    const r = Math.random();
+    if (r < 0.7) this.color = '#ffffff';
+    else if (r < 0.8) this.color = COLORS.cyan;
+    else if (r < 0.87) this.color = COLORS.pink;
+    else if (r < 0.93) this.color = COLORS.yellow;
+    else if (r < 0.97) this.color = COLORS.green;
+    else this.color = COLORS.purple;
+  }
+  update() {
+    this.y += this.speed;
+    if (this.y > canvas.height) this.reset();
+  }
+  draw() {
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// ==================== داده‌ها ====================
+let player, bullets, enemyBullets, enemies, powerups, particles, stars;
+let boss, score, spawnTimer, spawnDelay, powerupTimer, level, bossSpawned;
+let combo, comboTimer, maxCombo, bgHue = 0;
+
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 80; i++) stars.push(new Star());
+}
+
+function rectsCollide(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function startGame() {
+  player = new Player();
+  bullets = []; enemyBullets = []; enemies = []; powerups = []; particles = [];
+  boss = null; score = 0; spawnTimer = 0;
+  spawnDelay = [120, 90, 60][difficulty];   // ✅ دیرتر میان
+  powerupTimer = 0; level = 1; bossSpawned = false;
+  combo = 0; comboTimer = 0; maxCombo = 0;
+  state = STATE.PLAY;
+  showScreen(null);
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('touch-controls').classList.remove('hidden');
+}
+
+function goToMenu() {
+  state = STATE.MENU;
+  showScreen('menu-screen');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('touch-controls').classList.add('hidden');
+  document.getElementById('combo-hud').style.display = 'none';
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  if (id) document.getElementById(id).classList.add('active');
+}
+
+function gameOver() {
+  bestScore = Math.max(bestScore, score);
+  localStorage.setItem('sb_best', bestScore);
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('max-combo').textContent = maxCombo;
+  document.getElementById('best-score').textContent = bestScore;
+  state = STATE.GAMEOVER;
+  showScreen('gameover-screen');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('touch-controls').classList.add('hidden');
+  document.getElementById('combo-hud').style.display = 'none';
+  saveScore(score);
+}
+
+function saveScore(sc) {
+  let scores = JSON.parse(localStorage.getItem('sb_scores') || '[]');
+  scores.push(sc);
+  scores.sort((a, b) => b - a);
+  scores = scores.slice(0, 5);
+  localStorage.setItem('sb_scores', JSON.stringify(scores));
+}
+
+function drawBackground() {
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  for (const s of stars) { s.update(); s.draw(); }
+}
+
+function updateHUD() {
+  document.getElementById('score').textContent = score;
+  document.getElementById('level').textContent = level;
+  const stars = '*'.repeat(Math.max(0, player.hp));
+  document.getElementById('hp').textContent = stars;
+}
+
+function updateComboHUD() {
+  const el = document.getElementById('combo-hud');
+  if (combo > 1) {
+    el.textContent = `x${combo} COMBO!`;
+    el.style.display = 'block';
+    if (combo >= 10) el.style.color = COLORS.gold;
+    else if (combo >= 5) el.style.color = COLORS.yellow;
+    else el.style.color = COLORS.white;
+  } else {
+    el.style.display = 'none';
+  }
+}
+
+// ==================== حلقه بازی ====================
+function gameLoop() {
+  requestAnimationFrame(gameLoop);
+
+  if (state === STATE.PLAY && player) {
+    drawBackground();
+
+    player.update();
+
+    const firing = input.fire || input.auto;
+    if (firing && player.cooldown === 0) {
+      if (player.plasma > 0) {
+        bullets.push(new Bullet(player.x + player.w / 2 - 5, player.y, COLORS.plasma, false, true, 3));
+      } else if (player.tripleShot > 0) {
+        bullets.push(new Bullet(player.x + player.w * 0.5 - 2, player.y, COLORS.gold));
+        bullets.push(new Bullet(player.x + player.w * 0.15 - 2, player.y, COLORS.gold));
+        bullets.push(new Bullet(player.x + player.w * 0.85 - 2, player.y, COLORS.gold));
+      } else {
+        bullets.push(new Bullet(player.x + player.w * 0.25 - 2, player.y, COLORS.cyan));
+        bullets.push(new Bullet(player.x + player.w * 0.75 - 2, player.y, COLORS.cyan));
+      }
+      player.cooldown = 8;
+    }
+
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      bullets[i].update();
+      if (bullets[i].offScreen()) bullets.splice(i, 1);
+    }
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+      enemyBullets[i].update();
+      if (enemyBullets[i].offScreen()) enemyBullets.splice(i, 1);
+    }
+
+    // اسپاون دشمن
+    if (!boss) {
+      spawnTimer++;
+      if (spawnTimer >= spawnDelay) {
+        const r = Math.random();
+        let type = 'normal';
+        // ✅ دشمن‌های سخت‌تر دیرتر میان
+        if (level >= 8 && r < 0.03) type = 'shooter';
+        else if (level >= 6 && r < 0.12) type = 'tank';
+        else if (level >= 4 && r < 0.30) type = 'fast';
+        enemies.push(new Enemy(level, type));
+        spawnTimer = 0;
+      }
+    }
+
+    // پاورآپ — ✅ قلب بیشتر
+    powerupTimer++;
+    if (powerupTimer >= 400) {
+      const kinds = ['heart', 'heart', 'heart', 'heart', 'triple', 'shield', 'plasma'];
+      const k = kinds[Math.floor(Math.random() * kinds.length)];
+      powerups.push(new PowerUp(40 + Math.random() * (canvas.width - 80), -30, k));
+      powerupTimer = 0;
+    }
+
+    // دشمن‌ها
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      e.update();
+      if (e.type === 'shooter') {
+        e.shootTimer++;
+        if (e.shootTimer >= e.shootDelay && e.y > 0) {
+          enemyBullets.push(new Bullet(e.x + e.w / 2 - 2, e.y + e.h, COLORS.red, true));
+          e.shootTimer = 0;
+        }
+      }
+      if (e.offScreen()) {
+        enemies.splice(i, 1);
+        if (player.shield <= 0) {
+          player.hp--;
+          if (player.hp <= 0) return gameOver();
+        }
+      }
+    }
+
+    // باس
+    if (boss) {
+      boss.update();
+      boss.shootTimer++;
+      if (boss.shootTimer >= boss.shootDelay && !boss.entering) {
+        for (const dx of [-1, 0, 1]) {
+          enemyBullets.push(new Bullet(boss.x + boss.w / 2 + dx * 40, boss.y + boss.h, COLORS.red, true));
+        }
+        boss.shootTimer = 0;
+      }
+    }
+
+    // پاورآپ‌ها
+    for (let i = powerups.length - 1; i >= 0; i--) {
+      powerups[i].update();
+      if (powerups[i].offScreen()) powerups.splice(i, 1);
+    }
+
+    // ذرات
+    for (let i = particles.length - 1; i >= 0; i--) {
+      particles[i].update();
+      if (particles[i].dead()) particles.splice(i, 1);
+    }
+
+    // برخورد گلوله با دشمن
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      let removed = false;
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (rectsCollide(b.rect(), e.rect())) {
+          bullets.splice(i, 1);
+          e.hp -= b.damage;
+          e.hitFlash = 5;
+          removed = true;
+          if (e.hp <= 0) {
+            particles.push(new Particle(e.x + e.w / 2, e.y + e.h / 2, e.color, 15));
+            enemies.splice(j, 1);
+            combo++;
+            comboTimer = 100;
+            if (combo > maxCombo) maxCombo = combo;
+            score += 10 * Math.min(combo, 5);   // ✅ امتیاز ۵ برابر با کمبو
+          }
+          break;
+        }
+      }
+      if (removed) continue;
+      if (boss && rectsCollide(b.rect(), boss.rect())) {
+        bullets.splice(i, 1);
+        boss.hp -= b.damage;
+        boss.hitFlash = 5;
+        if (boss.hp <= 0) {
+          particles.push(new Particle(boss.x + boss.w / 2, boss.y + boss.h / 2, COLORS.gold, 50));
+          score += 200;
+          boss = null;
+          bossSpawned = false;
+          level++;
+          spawnDelay = Math.max(30, spawnDelay - 5);
+          player.bombs++;
+        }
+      }
+    }
+
+    // گلوله دشمن با بازیکن
+    for (let i = enemyBullets.length - 1; i >= 0; i--) {
+      if (rectsCollide(enemyBullets[i].rect(), player.rect())) {
+        enemyBullets.splice(i, 1);
+        if (player.shield <= 0) {
+          player.hp--;
+          combo = 0;
+          if (player.hp <= 0) return gameOver();
+        }
+      }
+    }
+
+    // دشمن با بازیکن
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      if (rectsCollide(enemies[i].rect(), player.rect())) {
+        particles.push(new Particle(enemies[i].x + 18, enemies[i].y + 18, enemies[i].color, 10));
+        enemies.splice(i, 1);
+        if (player.shield <= 0) {
+          player.hp--;
+          combo = 0;
+          if (player.hp <= 0) return gameOver();
+        }
+      }
+    }
+
+    // پاورآپ
+    for (let i = powerups.length - 1; i >= 0; i--) {
+      const p = powerups[i];
+      if (rectsCollide(p.rect(), player.rect())) {
+        if (p.kind === 'heart') player.hp = Math.min(player.hp + 1, player.maxHp);
+        else if (p.kind === 'triple') player.tripleShot = 600;
+        else if (p.kind === 'shield') player.shield = 600;
+        else if (p.kind === 'plasma') player.plasma = 600;
+        powerups.splice(i, 1);
+        score += 5;
+      }
+    }
+
+    if (comboTimer > 0) comboTimer--;
+    else combo = 0;
+
+    const newLevel = Math.floor(score / 100) + 1;
+    if (newLevel > level && !boss) {
+      level = newLevel;
+      spawnDelay = Math.max(30, spawnDelay - 5);
+      if (level % 5 === 0) player.bombs++;
+    }
+    if (level % 5 === 0 && !boss && !bossSpawned) {
+      boss = new Boss(level);
+      bossSpawned = true;
+      enemies = [];
+    }
+
+    // رسم
+    for (const b of bullets) b.draw();
+    for (const b of enemyBullets) b.draw();
+    for (const e of enemies) e.draw();
+    for (const p of powerups) p.draw();
+    for (const p of particles) p.draw();
+    if (boss) boss.draw();
+    player.draw();
+
+    updateHUD();
+    updateComboHUD();
+  } else {
+    ctx.fillStyle = COLORS.bg;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for (const s of stars) { s.update(); s.draw(); }
+  }
+}
+
+// ==================== دکمه‌های منو ====================
+document.querySelectorAll('[data-action]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const action = btn.dataset.action;
+    if (action === 'start') startGame();
+    else if (action === 'settings') { state = STATE.SETTINGS; showScreen('settings-screen'); }
+    else if (action === 'skin') { state = STATE.SKIN; showScreen('skin-screen'); }
+    else if (action === 'scores') { state = STATE.SCORES; showScores(); showScreen('scores-screen'); }
+    else if (action === 'help') { state = STATE.HELP; showScreen('help-screen'); }
+    else if (action === 'back') goToMenu();
+    else if (action === 'quit') {
+      if (confirm('از بازی خارج میشی؟')) {
+        showScreen('menu-screen'); state = STATE.MENU;
+        alert('مرورگر اجازه بستن خودکار نمیده. تب رو خودت ببند 🙏');
+      }
+    }
+    else if (action === 'restart') startGame();
+    else if (action === 'menu') goToMenu();
+  });
+});
+
+document.querySelectorAll('[data-skin]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    playerSkin = btn.dataset.skin;
+    alert('سفینه انتخاب شد! ✅');
+  });
+});
+
+document.getElementById('diff-btn').addEventListener('click', () => {
+  difficulty = (difficulty + 1) % 3;
+  const names = ['آسون', 'متوسط', 'سخت'];
+  document.getElementById('diff-btn').textContent = 'سطح: ' + names[difficulty];
+});
+
+function showScores() {
+  const scores = JSON.parse(localStorage.getItem('sb_scores') || '[]');
+  const list = document.getElementById('scores-list');
+  if (scores.length === 0) {
+    list.innerHTML = '<p>هنوز رکوردی ثبت نشده!</p>';
+  } else {
+    const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+    list.innerHTML = scores.map((s, i) =>
+      `<p>${medals[i]} امتیاز: <b>${s}</b></p>`
+    ).join('');
+  }
+}
+
+// ==================== کنترل‌ها ====================
+const touchMap = {
+  'btn-left': 'left', 'btn-right': 'right',
+  'btn-up': 'up', 'btn-down': 'down',
+  'btn-fire': 'fire',
+};
+
+Object.keys(touchMap).forEach(id => {
+  const btn = document.getElementById(id);
+  const key = touchMap[id];
+  const press = e => { e.preventDefault(); input[key] = true; btn.classList.add('pressed'); };
+  const release = e => { e.preventDefault(); input[key] = false; btn.classList.remove('pressed'); };
+  btn.addEventListener('touchstart', press, { passive: false });
+  btn.addEventListener('touchend', release, { passive: false });
+  btn.addEventListener('touchcancel', release, { passive: false });
+  btn.addEventListener('mousedown', press);
+  btn.addEventListener('mouseup', release);
+  btn.addEventListener('mouseleave', release);
+});
+
+const autoBtn = document.getElementById('btn-auto');
+autoBtn.addEventListener('click', () => {
+  input.auto = !input.auto;
+  autoBtn.classList.toggle('on', input.auto);
+});
+
+const bombBtn = document.getElementById('btn-bomb');
+const bombPress = e => {
+  e.preventDefault();
+  bombBtn.classList.add('pressed');
+  if (state === STATE.PLAY && player && player.bombs > 0) {
+    player.bombs--;
+    for (const en of enemies) {
+      particles.push(new Particle(en.x + en.w / 2, en.y + en.h / 2, en.color, 10));
+      score += 10;
+    }
+    enemies = [];
+    enemyBullets = [];
+    if (boss) {
+      boss.hp -= 5;
+      boss.hitFlash = 10;
+    }
+  }
+  setTimeout(() => bombBtn.classList.remove('pressed'), 150);
+};
+bombBtn.addEventListener('touchstart', bombPress, { passive: false });
+bombBtn.addEventListener('mousedown', bombPress);
+
+// ==================== شروع ====================
+resizeCanvas();
+initStars();
+gameLoop();
+</script>
+</body>
+    </html>
