@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { initAudio, playShootSound } from './audio.js';
 
-// ================= 1. راه‌اندازی صحنه =================
+// ================= 1. تنظیمات صحنه =================
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); 
-scene.fog = new THREE.Fog(0x87CEEB, 50, 200); // مه رو کمی دورتر کردم که شهر بهتر دیده بشه
+scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -14,64 +14,66 @@ document.body.appendChild(renderer.domElement);
 // ================= 2. نورپردازی =================
 scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5));
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-dirLight.position.set(50, 100, 50); 
+dirLight.position.set(100, 100, 50); 
+dirLight.castShadow = true;
 scene.add(dirLight);
 
-// ================= 3. زمین (چمن) =================
+// ================= 3. زمین و جاده =================
+// زمین بزرگ چمنی
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(300, 300), 
-  new THREE.MeshStandardMaterial({ color: 0x3a8a3a })
+  new THREE.PlaneGeometry(500, 500), 
+  new THREE.MeshStandardMaterial({ color: 0x2d6a2d }) // سبز تیره‌تر
 );
 ground.rotation.x = -Math.PI / 2; 
 ground.userData.isGround = true;
 scene.add(ground);
 
-// ================= 4. ساخت جاده آسفالت =================
-// یه مستطیل بلند برای جاده
-const roadGeo = new THREE.PlaneGeometry(15, 200); 
-const roadMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9 });
-const road = new THREE.Mesh(roadGeo, roadMat);
-road.rotation.x = -Math.PI / 2;
-road.position.set(0, 0.05, -50); // جاده از مرکز به سمت جلو (منفی Z) میره
-road.userData.isGround = true; // گلوله بهش بخوره سوراخ میشه
-scene.add(road);
+// جاده اصلی (افقی در وسط)
+const roadMain = new THREE.Mesh(
+  new THREE.PlaneGeometry(500, 20), 
+  new THREE.MeshStandardMaterial({ color: 0x333333 })
+);
+roadMain.rotation.x = -Math.PI / 2;
+roadMain.position.y = 0.05;
+roadMain.userData.isGround = true;
+scene.add(roadMain);
 
-// خط‌کشی وسط جاده
-const lineGeo = new THREE.PlaneGeometry(1, 200);
+// جاده فرعی (عمودی)
+const roadSub = new THREE.Mesh(
+  new THREE.PlaneGeometry(20, 500), 
+  new THREE.MeshStandardMaterial({ color: 0x333333 })
+);
+roadSub.rotation.x = -Math.PI / 2;
+roadSub.position.y = 0.06;
+roadSub.userData.isGround = true;
+scene.add(roadSub);
+
+// خط‌کشی‌های جاده
 const lineMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-const centerLine = new THREE.Mesh(lineGeo, lineMat);
-centerLine.rotation.x = -Math.PI / 2;
-centerLine.position.set(0, 0.06, -50);
-scene.add(centerLine);
+for (let i = -200; i < 200; i += 20) {
+  const lineH = new THREE.Mesh(new THREE.PlaneGeometry(10, 1), lineMat);
+  lineH.rotation.x = -Math.PI / 2;
+  lineH.position.set(i, 0.07, 0);
+  scene.add(lineH);
+}
+for (let i = -200; i < 200; i += 20) {
+  const lineV = new THREE.Mesh(new THREE.PlaneGeometry(1, 10), lineMat);
+  lineV.rotation.x = -Math.PI / 2;
+  lineV.position.set(0, 0.07, i);
+  scene.add(lineV);
+}
 
-// ================= 5. ساخت فرودگاه (نقطه شروع) =================
-// یه سکوی دایره‌ای بزرگ برای فرودگاه
-const airportGeo = new THREE.CircleGeometry(20, 32);
-const airportMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.5 });
-const airport = new THREE.Mesh(airportGeo, airportMat);
-airport.rotation.x = -Math.PI / 2;
-airport.position.set(0, 0.07, 20); // پشت سر بازیکن
-airport.userData.isGround = true;
-scene.add(airport);
-
-// خطوط سفید فرودگاه (حرف H)
-const hGeo = new THREE.PlaneGeometry(2, 15);
-const hMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-const h1 = new THREE.Mesh(hGeo, hMat); h1.rotation.x = -Math.PI/2; h1.position.set(-5, 0.08, 20); scene.add(h1);
-const h2 = new THREE.Mesh(hGeo, hMat); h2.rotation.x = -Math.PI/2; h2.position.set(5, 0.08, 20); scene.add(h2);
-const h3 = new THREE.Mesh(new THREE.PlaneGeometry(10, 2), hMat); h3.rotation.x = -Math.PI/2; h3.position.set(0, 0.08, 20); scene.add(h3);
-
-// ================= 6. ساخت ساختمون‌ها (مغازه‌ها) =================
+// ================= 4. سیستم ساخت ساختمون‌ها =================
 const obstacles = [];
 const buildingsGroup = new THREE.Group();
 scene.add(buildingsGroup);
 
-// تکسچر پنجره
+// تکسچر پنجره‌ها
 const canvas = document.createElement('canvas');
 canvas.width = 128; canvas.height = 128;
 const ctx = canvas.getContext('2d');
-ctx.fillStyle = '#ccbbaa'; ctx.fillRect(0, 0, 128, 128); // رنگ دیوار (کرم)
-ctx.fillStyle = '#333'; // پنجره
+ctx.fillStyle = '#b0b0b0'; ctx.fillRect(0, 0, 128, 128); 
+ctx.fillStyle = '#222'; 
 for (let y = 10; y < 128; y += 30) {
   for (let x = 10; x < 128; x += 30) {
     ctx.fillRect(x, y, 20, 20);
@@ -81,45 +83,69 @@ const windowTexture = new THREE.CanvasTexture(canvas);
 windowTexture.wrapS = THREE.RepeatWrapping;
 windowTexture.wrapT = THREE.RepeatWrapping;
 
-// تابع ساخت مغازه/ساختمون
+// تابع ساخت ساختمون (با انتخاب رنگ)
 function createBuilding(x, z, w, h, d, color) {
   windowTexture.repeat.set(w/5, h/5);
-  
   const b = new THREE.Mesh(
     new THREE.BoxGeometry(w, h, d), 
-    new THREE.MeshStandardMaterial({ map: windowTexture, roughness: 0.8 })
+    new THREE.MeshStandardMaterial({ map: windowTexture, color: color, roughness: 0.8 })
   );
   b.position.set(x, h/2, z); 
-  b.userData.isBuilding = true;
+  b.castShadow = true;
+  b.receiveShadow = true;
   buildingsGroup.add(b);
   
-  // اضافه کردن به لیست برخورد
   obstacles.push({
     minX: x - w/2, maxX: x + w/2,
     minZ: z - d/2, maxZ: z + d/2
   });
 }
 
-// چیدن مغازه‌ها در دو طرف جاده (به سمت جلو)
-// سمت راست جاده
-createBuilding(15, 0, 10, 15, 10); 
-createBuilding(15, -30, 12, 20, 12);
-createBuilding(18, -60, 8, 25, 8); 
-createBuilding(15, -90, 15, 10, 15); 
+// ================= 5. چیدمان شهر =================
+// چهار بلوک اصلی شهر (با رنگ‌های مختلف)
+const colors = [0xffcccc, 0xccffcc, 0xccccff, 0xffffcc, 0xffccff];
 
-// سمت چپ جاده
-createBuilding(-15, -10, 10, 12, 10); 
-createBuilding(-18, -40, 12, 25, 12);
-createBuilding(-15, -70, 10, 18, 10); 
-createBuilding(-20, -100, 15, 30, 15); 
+// بلوک بالا-راست
+createBuilding(40, -40, 30, 40, 30, colors[0]);
+createBuilding(80, -40, 25, 30, 25, colors[1]);
+createBuilding(40, -80, 20, 50, 20, colors[2]);
 
-// ساختمون‌های دورتر برای پر کردن پس‌زمینه
-createBuilding(40, -50, 20, 40, 20);
-createBuilding(-40, -50, 20, 45, 20);
+// بلوک بالا-چپ
+createBuilding(-40, -40, 30, 45, 30, colors[3]);
+createBuilding(-80, -40, 25, 35, 25, colors[4]);
+createBuilding(-40, -80, 20, 60, 20, colors[0]);
 
-// ================= 7. متغیرها =================
-// بازیکن از فرودگاه شروع میکنه
-let playerPos = new THREE.Vector3(0, 1.6, 25); 
+// بلوک پایین-راست
+createBuilding(40, 40, 30, 25, 30, colors[1]);
+createBuilding(80, 40, 25, 40, 25, colors[2]);
+createBuilding(40, 80, 20, 20, 20, colors[3]);
+
+// بلوک پایین-چپ
+createBuilding(-40, 40, 30, 35, 30, colors[4]);
+createBuilding(-80, 40, 25, 25, 25, colors[0]);
+createBuilding(-40, 80, 20, 45, 20, colors[1]);
+
+// چند ساختمون پراکنده برای زیبایی
+createBuilding(120, -20, 15, 20, 15, colors[2]);
+createBuilding(-120, 20, 15, 25, 15, colors[3]);
+
+// ================= 6. ابرها =================
+const clouds = [];
+const cloudMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 });
+for (let i = 0; i < 10; i++) {
+  const c = new THREE.Group();
+  for (let j = 0; j < 4; j++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(3 + Math.random() * 4, 7, 7), cloudMat);
+    s.position.set((Math.random() - 0.5) * 10, 0, (Math.random() - 0.5) * 5);
+    c.add(s);
+  }
+  c.position.set((Math.random() - 0.5) * 200, 40 + Math.random() * 20, (Math.random() - 0.5) * 200);
+  scene.add(c);
+  clouds.push(c);
+}
+
+// ================= 7. متغیرهای بازیکن =================
+let playerPos = new THREE.Vector3(0, 1.6, 15); 
 let playerYaw = 0, playerPitch = 0;
 let moveForward = 0, moveRight = 0;
 let isFiring = false, fireCooldown = 0;
@@ -127,10 +153,10 @@ let bullets = [];
 let decals = [];
 const playerRadius = 0.5; 
 
-// ================= 8. جوی‌استیک =================
+// ================= 8. کنترل‌ها (جوی‌استیک و دوربین) =================
 const joyZone = document.getElementById('joystick-zone');
 const joyKnob = document.getElementById('joystick-knob');
-let joyActive = false, joyCenterX = 0, joyCenterY = 0, joyMaxDist = 50;
+let joyActive = false, joyCenterX = 0, joyCenterY = 0, joyMaxDist = 40;
 
 joyZone.addEventListener('touchstart', (e) => {
   e.preventDefault(); initAudio(); joyActive = true;
@@ -163,13 +189,11 @@ document.addEventListener('touchend', (e) => {
   if (joyActive) { joyActive = false; joyKnob.style.transform = 'translate(0px, 0px)'; moveForward = 0; moveRight = 0; }
 });
 
-// ================= 9. دکمه شلیک =================
+// ================= 9. شلیک =================
 document.getElementById('btn-fire').addEventListener('touchstart', (e) => { e.preventDefault(); isFiring = true; }, {passive: false});
 document.getElementById('btn-fire').addEventListener('touchend', (e) => { e.preventDefault(); isFiring = false; }, {passive: false});
 
-// ================= 10. شلیک =================
 const raycaster = new THREE.Raycaster();
-
 function shootBullet() {
   const b = new THREE.Mesh(
     new THREE.SphereGeometry(0.1, 4, 4), 
@@ -178,29 +202,24 @@ function shootBullet() {
   const startPos = camera.position.clone();
   const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
   b.position.copy(startPos).add(dir.multiplyScalar(1));
-  b.userData = { velocity: dir.multiplyScalar(1.5), life: 100 };
+  b.userData = { velocity: dir.multiplyScalar(2), life: 100 }; // سرعت گلوله بیشتر شد
   scene.add(b); bullets.push(b);
 
   raycaster.set(camera.position, dir);
-  // بررسی برخورد با ساختمون‌ها، زمین، جاده و فرودگاه
-  const intersects = raycaster.intersectObjects([buildingsGroup, ground, road, airport], true);
+  const intersects = raycaster.intersectObjects([buildingsGroup, ground], true);
 
   if (intersects.length > 0) {
     const hit = intersects[0];
-    const decalGeo = new THREE.PlaneGeometry(0.4, 0.4);
-    const decalMat = new THREE.MeshBasicMaterial({ 
-      color: 0x000000, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false 
-    });
-    const decal = new THREE.Mesh(decalGeo, decalMat);
+    const decalMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false });
+    const decal = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), decalMat);
     decal.position.copy(hit.point);
     decal.lookAt(hit.point.clone().add(hit.face.normal));
     scene.add(decal);
-    
     decals.push({ mesh: decal, timeCreated: performance.now() });
   }
 }
 
-// ================= 11. برخورد =================
+// ================= 10. برخورد و حلقه بازی =================
 function checkCollision(newX, newZ) {
   for (let obs of obstacles) {
     if (newX + playerRadius > obs.minX && newX - playerRadius < obs.maxX &&
@@ -211,11 +230,14 @@ function checkCollision(newX, newZ) {
   return false;
 }
 
-// ================= 12. حلقه بازی =================
 function animate() {
   requestAnimationFrame(animate);
 
-  const moveSpeed = 0.15;
+  // ابرها
+  clouds.forEach(c => { c.position.x += 0.1; if (c.position.x > 250) c.position.x = -250; });
+
+  // حرکت بازیکن
+  const moveSpeed = 0.2;
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); forward.y = 0; forward.normalize();
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
   
@@ -228,16 +250,19 @@ function animate() {
   camera.position.copy(playerPos); 
   camera.rotation.set(playerPitch, playerYaw, 0, 'YXZ');
 
+  // شلیک
   if (isFiring) { 
     fireCooldown--; 
     if (fireCooldown <= 0) { shootBullet(); playShootSound(); fireCooldown = 10; } 
   }
 
+  // گلوله‌ها
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i]; b.position.add(b.userData.velocity); b.userData.life--;
     if (b.userData.life <= 0) { scene.remove(b); bullets.splice(i, 1); }
   }
 
+  // حذف سوراخ‌ها بعد 40 ثانیه
   const currentTime = performance.now();
   for (let i = decals.length - 1; i >= 0; i--) {
     if (currentTime - decals[i].timeCreated > 40000) {
