@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { initAudio, playShootSound } from './audio.js';
 
-// ================= 1. راه‌اندازی صحنه =================
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); 
 scene.fog = new THREE.Fog(0x87CEEB, 30, 150);
@@ -11,13 +10,11 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// ================= 2. نورپردازی =================
 scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5));
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.position.set(50, 100, 50); 
 scene.add(dirLight);
 
-// ================= 3. زمین و ابرها =================
 const ground = new THREE.Mesh(new THREE.PlaneGeometry(300, 300), new THREE.MeshStandardMaterial({ color: 0x3a8a3a }));
 ground.rotation.x = -Math.PI / 2; 
 scene.add(ground);
@@ -35,7 +32,6 @@ function createCloud(x, y, z) {
 }
 createCloud(-20, 20, -30); createCloud(30, 25, -50); createCloud(0, 30, -80);
 
-// ================= 4. ساختمون‌ها =================
 function createBuilding(x, z, w, h, d) {
   const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: 0xaaaaaa }));
   b.position.set(x, h/2, z); scene.add(b);
@@ -43,13 +39,12 @@ function createBuilding(x, z, w, h, d) {
 createBuilding(-15, -20, 10, 25, 10); createBuilding(20, -30, 15, 35, 15);
 createBuilding(-25, 15, 12, 20, 12); createBuilding(25, 20, 10, 45, 10);
 
-// ================= 5. متغیرها =================
 let playerPos = new THREE.Vector3(0, 1.6, 15);
 let playerYaw = 0, playerPitch = 0;
 let moveForward = 0, moveRight = 0;
 let isFiring = false, fireCooldown = 0, bullets = [];
+let lastTouchX = 0, lastTouchY = 0;
 
-// ================= 6. جوی‌استیک =================
 const joyZone = document.getElementById('joystick-zone');
 const joyKnob = document.getElementById('joystick-knob');
 let joyActive = false, joyCenterX = 0, joyCenterY = 0, joyMaxDist = 50;
@@ -76,7 +71,6 @@ document.addEventListener('touchmove', (e) => {
   }
 }, {passive: false});
 
-let lastTouchX = 0, lastTouchY = 0;
 document.addEventListener('touchstart', (e) => {
   if (e.target.tagName !== 'BUTTON' && !joyActive) { lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; }
 });
@@ -85,11 +79,9 @@ document.addEventListener('touchend', (e) => {
   if (joyActive) { joyActive = false; joyKnob.style.transform = 'translate(0px, 0px)'; moveForward = 0; moveRight = 0; }
 });
 
-// ================= 7. دکمه شلیک =================
 document.getElementById('btn-fire').addEventListener('touchstart', (e) => { e.preventDefault(); isFiring = true; }, {passive: false});
 document.getElementById('btn-fire').addEventListener('touchend', (e) => { e.preventDefault(); isFiring = false; }, {passive: false});
 
-// ================= 8. شلیک =================
 function shootBullet() {
   const b = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 4), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
   const startPos = camera.position.clone();
@@ -99,7 +91,6 @@ function shootBullet() {
   scene.add(b); bullets.push(b);
 }
 
-// ================= 9. حلقه بازی =================
 function animate() {
   requestAnimationFrame(animate);
   
@@ -127,4 +118,5 @@ function animate() {
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
 animate();
