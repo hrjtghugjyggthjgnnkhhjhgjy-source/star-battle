@@ -8,11 +8,10 @@ scene.fog = new THREE.Fog(0x87CEEB, 150, 400);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-// تنظیم رزولوشن برای کیفیت بهتر
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap; // سایه‌های نرم
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 // ================= 2. نورپردازی =================
@@ -20,27 +19,19 @@ scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
 dirLight.position.set(100, 200, 50); 
 dirLight.castShadow = true;
-// تنظیمات سایه باکیفیت
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
-dirLight.shadow.camera.near = 0.5;
-dirLight.shadow.camera.far = 500;
 scene.add(dirLight);
 
 // ================= 3. زمین و جاده =================
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(1000, 1000), 
-  new THREE.MeshStandardMaterial({ color: 0x2a2a2a }) // خاکستری تیره
-);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1000, 1000), new THREE.MeshStandardMaterial({ color: 0x2a2a2a }));
 ground.rotation.x = -Math.PI / 2; 
 ground.receiveShadow = true;
 ground.userData.isGround = true;
 scene.add(ground);
 
-// ساخت جاده با کیفیت
 function createRoad(x, z, w, d, isHorizontal) {
-  const roadMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(w, d), roadMat);
+  const road = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: 0x111111 }));
   road.rotation.x = -Math.PI / 2;
   road.position.set(x, 0.01, z);
   road.receiveShadow = true;
@@ -64,7 +55,6 @@ function createRoad(x, z, w, d, isHorizontal) {
   }
 }
 
-// خیابان‌های اصلی
 createRoad(0, 0, 1000, 40, true);   
 createRoad(0, 200, 1000, 40, true); 
 createRoad(0, -200, 1000, 40, true); 
@@ -77,7 +67,6 @@ const obstacles = [];
 const buildingsGroup = new THREE.Group();
 scene.add(buildingsGroup);
 
-// تکسچر پنجره‌ها
 const canvas = document.createElement('canvas');
 canvas.width = 256; canvas.height = 256;
 const ctx = canvas.getContext('2d');
@@ -92,19 +81,13 @@ windowTexture.wrapT = THREE.RepeatWrapping;
 
 function createBuilding(x, z, w, h, d) {
   windowTexture.repeat.set(w/10, h/10); 
-  const b = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, d), 
-    new THREE.MeshStandardMaterial({ map: windowTexture, roughness: 0.8 })
-  );
+  const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ map: windowTexture, roughness: 0.8 }));
   b.position.set(x, h/2, z); 
-  b.castShadow = true; 
-  b.receiveShadow = true;
+  b.castShadow = true; b.receiveShadow = true;
   buildingsGroup.add(b);
-  
   obstacles.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2, maxZ: z + d/2 });
 }
 
-// چیدمان برج‌ها
 createBuilding(60, 60, 30, 100, 30);
 createBuilding(100, 100, 40, 150, 40);
 createBuilding(-60, 60, 30, 120, 30);
@@ -114,41 +97,24 @@ createBuilding(100, -100, 40, 140, 40);
 createBuilding(-60, -60, 30, 110, 30);
 createBuilding(-100, -100, 40, 160, 40);
 
-// ================= 5. ماشین‌ها (درست شده) =================
+// ================= 5. ماشین‌ها =================
 const cars = [];
 function createCar(color, speed, startX, startZ, direction) {
   const carGroup = new THREE.Group();
-  
-  // بدنه ماشین
   const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), new THREE.MeshStandardMaterial({ color: color }));
-  body.position.y = 0.5; 
-  body.castShadow = true;
-  carGroup.add(body);
-  
-  // کابین
+  body.position.y = 0.5; body.castShadow = true; carGroup.add(body);
   const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 2), new THREE.MeshStandardMaterial({ color: 0x111111 }));
-  cabin.position.set(0, 1.4, -0.5); 
-  cabin.castShadow = true;
-  carGroup.add(cabin);
+  cabin.position.set(0, 1.4, -0.5); cabin.castShadow = true; carGroup.add(cabin);
 
-  // تنظیم جهت ماشین بر اساس مسیر (دیگه کج نمی‌ره)
-  if (direction === 'x') {
-    carGroup.rotation.y = speed > 0 ? Math.PI / 2 : -Math.PI / 2; 
-  } else if (direction === 'z') {
-    carGroup.rotation.y = speed > 0 ? 0 : Math.PI;
-  }
+  if (direction === 'x') carGroup.rotation.y = speed > 0 ? Math.PI / 2 : -Math.PI / 2; 
+  else if (direction === 'z') carGroup.rotation.y = speed > 0 ? 0 : Math.PI;
 
   carGroup.position.set(startX, 0, startZ);
   scene.add(carGroup);
   cars.push({ mesh: carGroup, speed: speed, axis: direction });
 }
-
-// ماشین‌های محور X (افقی)
 createCar(0xff0000, 0.4, -300, 10, 'x');
 createCar(0x0000ff, -0.3, 300, -10, 'x');
-createCar(0xffff00, 0.5, -100, 10, 'x');
-
-// ماشین‌های محور Z (عمودی)
 createCar(0xffffff, 0.3, 10, -300, 'z');
 createCar(0x00ff00, -0.4, -10, 300, 'z');
 
@@ -170,46 +136,118 @@ let bullets = [];
 let decals = [];
 const playerRadius = 0.5; 
 
-// ================= 8. جوی‌استیک =================
+// ================= 8. سیستم کنترل چند لمسی (حل مشکل همزمانی) =================
 const joyZone = document.getElementById('joystick-zone');
 const joyKnob = document.getElementById('joystick-knob');
-let joyActive = false, joyCenterX = 0, joyCenterY = 0, joyMaxDist = 40;
+const btnFire = document.getElementById('btn-fire');
 
-joyZone.addEventListener('touchstart', (e) => {
-  e.preventDefault(); initAudio(); joyActive = true;
+let joyTouchId = null; // شناسه انگشتِ روی جوی‌استیک
+let cameraTouchId = null; // شناسه انگشتِ روی صفحه (برای چرخش)
+let lastTouchX = 0, lastTouchY = 0;
+let joyCenterX = 0, joyCenterY = 0, joyMaxDist = 40;
+
+// پیدا کردن مرکز جوی‌استیک در لحظه لمس
+function updateJoyCenter() {
   const rect = joyZone.getBoundingClientRect();
-  joyCenterX = rect.left + rect.width / 2; joyCenterY = rect.top + rect.height / 2;
-}, {passive: false});
+  joyCenterX = rect.left + rect.width / 2; 
+  joyCenterY = rect.top + rect.height / 2;
+}
 
-document.addEventListener('touchmove', (e) => {
-  if (joyActive) {
-    e.preventDefault();
-    let dx = e.touches[0].clientX - joyCenterX, dy = e.touches[0].clientY - joyCenterY;
-    let dist = Math.sqrt(dx*dx + dy*dy);
-    if (dist > joyMaxDist) { dx = (dx / dist) * joyMaxDist; dy = (dy / dist) * joyMaxDist; }
-    joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-    moveRight = dx / joyMaxDist; moveForward = -dy / joyMaxDist;
-  } else if (e.target.tagName !== 'BUTTON') {
-    let dx = e.touches[0].clientX - lastTouchX, dy = e.touches[0].clientY - lastTouchY;
-    playerYaw -= dx * 0.005; playerPitch -= dy * 0.005;
-    playerPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, playerPitch));
-    lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY;
+// --- شروع لمس ---
+document.addEventListener('touchstart', (e) => {
+  e.preventDefault(); 
+  initAudio();
+  
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const touch = e.changedTouches[i];
+    
+    // 1. اگر روی جوی‌استیک بود
+    if (touch.target === joyZone || touch.target === joyKnob) {
+      joyTouchId = touch.identifier;
+      updateJoyCenter();
+    } 
+    // 2. اگر روی دکمه شلیک بود
+    else if (touch.target === btnFire) {
+      isFiring = true;
+    } 
+    // 3. اگر روی بقیه صفحه بود (برای چرخش دوربین)
+    else {
+      if (cameraTouchId === null) {
+        cameraTouchId = touch.identifier;
+        lastTouchX = touch.clientX;
+        lastTouchY = touch.clientY;
+      }
+    }
   }
 }, {passive: false});
 
-let lastTouchX = 0, lastTouchY = 0;
-document.addEventListener('touchstart', (e) => {
-  if (e.target.tagName !== 'BUTTON' && !joyActive) { lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY; }
-});
+// --- حرکت لمس ---
+document.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const touch = e.changedTouches[i];
+    
+    // اگر انگشت مربوط به جوی‌استیک حرکت کرد
+    if (touch.identifier === joyTouchId) {
+      let dx = touch.clientX - joyCenterX;
+      let dy = touch.clientY - joyCenterY;
+      let dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist > joyMaxDist) { dx = (dx / dist) * joyMaxDist; dy = (dy / dist) * joyMaxDist; }
+      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+      moveRight = dx / joyMaxDist; 
+      moveForward = -dy / joyMaxDist;
+    }
+    
+    // اگر انگشت مربوط به چرخش دوربین حرکت کرد
+    if (touch.identifier === cameraTouchId) {
+      let dx = touch.clientX - lastTouchX;
+      let dy = touch.clientY - lastTouchY;
+      playerYaw -= dx * 0.005; 
+      playerPitch -= dy * 0.005;
+      playerPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, playerPitch));
+      lastTouchX = touch.clientX; 
+      lastTouchY = touch.clientY;
+    }
+  }
+}, {passive: false});
 
+// --- پایان لمس ---
 document.addEventListener('touchend', (e) => {
-  if (joyActive) { joyActive = false; joyKnob.style.transform = 'translate(0px, 0px)'; moveForward = 0; moveRight = 0; }
+  e.preventDefault();
+  
+  for (let i = 0; i < e.changedTouches.length; i++) {
+    const touch = e.changedTouches[i];
+    
+    // اگر انگشت از جوی‌استیک برداشته شد
+    if (touch.identifier === joyTouchId) {
+      joyTouchId = null;
+      joyKnob.style.transform = 'translate(0px, 0px)';
+      moveForward = 0; 
+      moveRight = 0;
+    }
+    
+    // اگر انگشت از دکمه شلیک برداشته شد
+    if (touch.target === btnFire) {
+      isFiring = false;
+    }
+    
+    // اگر انگشت چرخش دوربین برداشته شد
+    if (touch.identifier === cameraTouchId) {
+      cameraTouchId = null;
+    }
+  }
+}, {passive: false});
+
+// لغو لمس (در صورت قطع شدن)
+document.addEventListener('touchcancel', (e) => {
+  joyTouchId = null; cameraTouchId = null;
+  joyKnob.style.transform = 'translate(0px, 0px)';
+  moveForward = 0; moveRight = 0;
+  isFiring = false;
 });
 
 // ================= 9. شلیک =================
-document.getElementById('btn-fire').addEventListener('touchstart', (e) => { e.preventDefault(); isFiring = true; }, {passive: false});
-document.getElementById('btn-fire').addEventListener('touchend', (e) => { e.preventDefault(); isFiring = false; }, {passive: false});
-
 const raycaster = new THREE.Raycaster();
 function shootBullet() {
   const b = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 4), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
