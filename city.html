@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>City & Ship 3D</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #87CEEB; font-family: Tahoma; touch-action: none; }
+  canvas { display: block; }
+  
+  /* رابط کاربری */
+  #joystick-zone { position: absolute; bottom: 20px; left: 20px; width: 120px; height: 120px; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; z-index: 10; }
+  #joystick-knob { position: absolute; top: 35px; left: 35px; width: 50px; height: 50px; background: rgba(255,255,255,0.6); border-radius: 50%; }
+  
+  #btn-fire { position: absolute; bottom: 30px; right: 30px; width: 80px; height: 80px; border-radius: 50%; background: rgba(220, 50, 50, 0.6); border: 2px solid #fff; color: #fff; font-weight: bold; z-index: 10; display: flex; justify-content: center; align-items: center; }
+  #btn-switch { position: absolute; bottom: 130px; right: 30px; width: 80px; height: 60px; border-radius: 15px; background: rgba(50, 150, 255, 0.6); border: 2px solid #fff; color: #fff; font-weight: bold; z-index: 10; display: flex; justify-content: center; align-items: center; font-size: 12px; text-align: center; }
+  
+  #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); border: 2px solid rgba(255, 255, 255, 0.7); border-radius: 50%; z-index: 5; pointer-events: none; }
+  #info { position: absolute; top: 10px; width: 100%; text-align: center; color: #fff; font-weight: bold; font-size: 18px; text-shadow: 1px 1px 3px #000; z-index: 10; pointer-events: none; }
+</style>
+</head>
+<body>
+
+<div id="info">پیاده نظام (برای سوار شدن به سفینه نزدیکش شو و SWITCH بزن)</div>
+<div id="crosshair"></div>
+
+<div id="joystick-zone"><div id="joystick-knob"></div></div>
+<button id="btn-fire">FIRE</button>
+<button id="btn-switch">SWITCH<br>سوار/پیاده</button>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// 1. راه‌اندازی صحنه
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87CEEB); // آسمون آبی
+scene.fog = new THREE.Fog(0x87CEEB, 50, 150); // مه برای دیدن مسافت
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true; // فعال کردن سایه
+document.body.appendChild(renderer.domElement);
+
+// 2. نورپردازی
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 1.5);
+scene.add(hemiLight);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(50, 100, 50);
+dirLight.castShadow = true;
+dirLight.shadow.camera.top = 100;
+dirLight.shadow.camera.bottom = -100;
+dirLight.shadow.camera.left = -100;
+dirLight.shadow.camera.right = 100;
+scene.add(dirLight);
+
+// 3. ساخت زمین (آسفالت)
+const groundGeo = new THREE.PlaneGeometry(500, 500);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.8 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// 4. ساخت شهر کوچیک (ساختمون‌ها)
+const buildingMat = new THREE.MeshStandardMaterial({ color: 0x888888 });
+for (let i = 0; i < 30; i++) {
+  const w = 10 + Math.random() * 10;
+  const h = 10 + Math.random() * 40;
+  const d = 10 + Math.random() * 10;
+  const bGeo = new THREE.BoxGeometry(w, h, d);
+  const building = new THREE.Mesh(bGeo, buildingMat);
+  
+  // پخش کردن ساختمون‌ها در شهر (به جز وسط که فرودگاهه)
+  let x = (Math.random() - 0.5) * 200;
+  let z = (Math.random() - 0.5) * 200;
+  if (Math.abs(x) < 30 && Math.abs(z) < 30) continue; // جای خالی برای فرودگاه
+  
+  building.position.set(x, h/2, z);
+  building.castShadow = true;
+  building.receiveShadow = true;
+  scene.add(building);
+}
+
+// 5. ساخت سفینه (وسط زمین)
+const shipGroup = new THREE.Group();
+const bodyGeo = new THREE.ConeGeometry(2, 6, 4);
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0x50dcdc, metalness: 0.8 });
+const body = new THREE.Mesh(bodyGeo, bodyMat);
+body.rotation.x = -Math.PI / 2;
+body.position.y = 2;
+body.castShadow = true;
+shipGroup.add(body);
+
+const wingGeo = new THREE.BoxGeometry(8, 0.2, 2);
+const wingMat = new THREE.MeshStandardMaterial({ color: 0x222244 });
+const wings = new THREE.Mesh(wingGeo, wingMat);
+wings.position.y = 2;
+wings.position.z = 1;
+wings.castShadow = true;
+shipGroup.add(wings);
+
+shipGroup.position.set(0, 0, 0); // وسط زمین
+scene.add(shipGroup);
+
+// 6. متغیرهای حالت بازی
+let isPiloting = false;
+let playerPos = new THREE.Vector3(0, 1.6, 20); // شروع بازیکن با فاصله از سفینه
+let playerYaw = 0; // چرخش افقی
+let playerPitch = 0; // چرخش عمودی
+let moveForward = 0;
+let moveRight = 0;
+let isFiring = false;
+let fireCooldown = 0;
+let bullets = [];
+let touchSensitivity = 0.005;
+
+// 7. جوی‌استیک لمسی
+const joyZone = document.getElementById('joystick-zone');
+const joyKnob = document.getElementById('joystick-knob');
+let joyActive = false;
+let joyCenterX = 0, joyCenterY = 0;
+let joyMaxDist = 35;
+
+joyZone.addEventListener('touchstart', (e) => {
+  e.preventDefault(); joyActive = true;
+  const rect = joyZone.getBoundingClientRect();
+  joyCenterX = rect.left + rect.width / 2;
+  joyCenterY = rect.top + rect.height / 2;
+}, {passive: false});
+
+document.addEventListener('touchmove', (e) => {
+  // چرخش دوربین (اگر انگشت روی جوی‌استیک نباشه)
+  if (!joyActive && e.target.tagName !== 'BUTTON') {
+    playerYaw -= e.touches[0].clientX * 0; // در حالت موبایل با درگ کردن صفحه چرخش می‌کنیم
+  }
+
+  if (joyActive) {
+    e.preventDefault();
+    let touchX = e.touches[0].clientX;
+    let touchY = e.touches[0].clientY;
+    
+    let dx = touchX - joyCenterX;
+    let dy = touchY - joyCenterY;
+    let dist = Math.sqrt(dx*dx + dy*dy);
+    
+    if (dist > joyMaxDist) {
+      dx = (dx / dist) * joyMaxDist;
+      dy = (dy / dist) * joyMaxDist;
+    }
+    
+    joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    moveRight = dx / joyMaxDist;
+    moveForward = -dy / joyMaxDist;
+  }
+}, {passive: false});
+
+document.addEventListener('touchend', (e) => {
+  if (joyActive) {
+    joyActive = false;
+    joyKnob.style.transform = 'translate(0px, 0px)';
+    moveForward = 0;
+    moveRight = 0;
+  }
+});
+
+// 8. چرخش دوربین با کشیدن انگشت (بیرون از جوی‌استیک)
+let lastTouchX = 0, lastTouchY = 0;
+document.addEventListener('touchstart', (e) => {
+  if (e.target.tagName !== 'BUTTON' && !joyActive) {
+    lastTouchX = e.touches[0].clientX;
+    lastTouchY = e.touches[0].clientY;
+  }
+});
+
+document.addEventListener('touchmove', (e) => {
+  if (e.target.tagName !== 'BUTTON' && !joyActive && e.touches.length > 0) {
+    let touchX = e.touches[0].clientX;
+    let touchY = e.touches[0].clientY;
+    
+    playerYaw -= (touchX - lastTouchX) * touchSensitivity;
+    playerPitch -= (touchY - lastTouchY) * touchSensitivity;
+    playerPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, playerPitch));
+    
+    lastTouchX = touchX;
+    lastTouchY = touchY;
+  }
+}, {passive: false});
+
+// 9. دکمه‌ها
+document.getElementById('btn-fire').addEventListener('touchstart', (e) => {
+  e.preventDefault(); isFiring = true;
+}, {passive: false});
+document.getElementById('btn-fire').addEventListener('touchend', (e) => {
+  e.preventDefault(); isFiring = false;
+}, {passive: false});
+
+document.getElementById('btn-switch').addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  const distToShip = playerPos.distanceTo(shipGroup.position);
+  
+  if (!isPiloting && distToShip < 10) {
+    // سوار شدن
+    isPiloting = true;
+    document.getElementById('info').innerText = 'حالت: پرواز با سفینه (SWITCH برای فرود)';
+    // دوربین رو ببر پشت سفینه
+    playerPos.copy(shipGroup.position).add(new THREE.Vector3(0, 8, 15));
+    playerPitch = -0.2; playerYaw = 0;
+    shipGroup.rotation.set(0, 0, 0);
+  } else if (isPiloting) {
+    // پیاده شدن
+    isPiloting = false;
+    document.getElementById('info').innerText = 'حالت: پیاده نظام';
+    // سفینه رو پارک کن
+    shipGroup.position.y = 0;
+    // بازیکن رو بذار کنار سفینه
+    playerPos.copy(shipGroup.position).add(new THREE.Vector3(5, 1.6, 5));
+    playerPitch = 0; playerYaw = 0;
+  } else {
+    document.getElementById('info').innerText = 'برای سوار شدن باید به سفینه نزدیک بشی!';
+    setTimeout(() => document.getElementById('info').innerText = 'حالت: پیاده نظام', 2000);
+  }
+}, {passive: false});
+
+// 10. توابع بازی
+const bulletsGroup = new THREE.Group();
+scene.add(bulletsGroup);
+
+function shootBullet() {
+  const bGeo = new THREE.SphereGeometry(0.2, 4, 4);
+  const bMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+  const bullet = new THREE.Mesh(bGeo, bMat);
+  
+  // گلوله از وسط دوربین شلیک میشه
+  const startPos = camera.position.clone();
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  
+  // اگه سوار سفینه بودی، گلوله از سفینه در میاد
+  if (isPiloting) {
+    startPos.copy(shipGroup.position).add(new THREE.Vector3(0, 2, 0)).add(dir.multiplyScalar(5));
+  } else {
+    startPos.add(dir.multiplyScalar(1));
+  }
+  
+  bullet.position.copy(startPos);
+  bullet.userData = { velocity: dir.multiplyScalar(2), life: 100 }; // سرعت گلوله
+  
+  bulletsGroup.add(bullet);
+  bullets.push(bullet);
+}
+
+// 11. حلقه بازی (Game Loop)
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (isPiloting) {
+    // --- حالت پرواز ---
+    const shipSpeed = 1.5;
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipGroup.quaternion);
+    
+    // چرخش سفینه با کشیدن انگشت
+    shipGroup.rotation.y = playerYaw;
+    shipGroup.rotation.x = playerPitch * 0.5;
+    
+    // حرکت به جلو
+    shipGroup.position.add(forward.multiplyScalar(shipSpeed));
+    
+    // دوربین پشت سفینه
+    const relativeOffset = new THREE.Vector3(0, 5, 12);
+    relativeOffset.applyQuaternion(shipGroup.quaternion);
+    camera.position.copy(shipGroup.position).add(relativeOffset);
+    camera.lookAt(shipGroup.position.clone().add(forward.multiplyScalar(10)));
+    
+    // به‌روزرسانی موقعیت بازیکن برای وقتی پیاده میشه
+    playerPos.copy(shipGroup.position);
+
+  } else {
+    // --- حالت پیاده نظام ---
+    const moveSpeed = 0.5;
+    
+    // محاسبه جهت‌های حرکت بر اساس چرخش دوربین
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+    forward.y = 0; forward.normalize(); // حرکت فقط در صفحه افقی
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+    right.y = 0; right.normalize();
+    
+    // حرکت با جوی‌استیک
+    playerPos.add(forward.multiplyScalar(moveForward * moveSpeed));
+    playerPos.add(right.multiplyScalar(moveRight * moveSpeed));
+    
+    // تنظیم ارتفاع (قد)
+    playerPos.y = 1.6;
+    
+    // دوربین اول شخص
+    camera.position.copy(playerPos);
+    camera.rotation.set(playerPitch, playerYaw, 0, 'YXZ');
+  }
+
+  // شلیک رگباری
+  if (isFiring) {
+    fireCooldown--;
+    if (fireCooldown <= 0) {
+      shootBullet();
+      fireCooldown = 8; // سرعت شلیک
+    }
+  }
+
+  // آپدیت گلوله‌ها
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.position.add(b.userData.velocity);
+    b.userData.life--;
+    
+    if (b.userData.life <= 0) {
+      bulletsGroup.remove(b);
+      bullets.splice(i, 1);
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+// تنظیم سایز صفحه
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+animate();
+</script>
+</body>
+</html>
