@@ -4,17 +4,25 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>Star Battle 3D</title>
-<link rel="stylesheet" href="style.css">
+<style>
+  body { margin: 0; overflow: hidden; background: #000; font-family: Tahoma; }
+  canvas { display: block; }
+  #ui { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 10; }
+  .btn { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #fff; font-size: 14px; font-weight: bold; color: #fff; opacity: 0.8; display: flex; justify-content: center; align-items: center; text-align: center; touch-action: none; }
+  #btn-switch { background: rgba(255, 165, 0, 0.6); }
+  #btn-fire { background: rgba(255, 0, 0, 0.6); }
+  #btn-fire.active { background: rgba(255, 50, 50, 1); box-shadow: 0 0 20px red; }
+  #info { position: absolute; top: 20px; width: 100%; text-align: center; color: #fff; font-size: 20px; pointer-events: none; z-index: 10; }
+</style>
 </head>
 <body>
 
-<div id="info">حالت: پرواز با سفینه</div>
+<div id="info">آماده شلیک...</div>
 <div id="ui">
-  <button class="btn" id="btn-switch">SWITCH<br>پیاده/سوار</button>
+  <button class="btn" id="btn-switch">پیاده<br>شدن</button>
   <button class="btn" id="btn-fire">FIRE</button>
 </div>
 
-<!-- لود کردن کتابخانه Three.js -->
 <script type="importmap">
 {
   "imports": {
@@ -29,83 +37,193 @@ import * as THREE from 'three';
 // 1. راه‌اندازی صحنه، دوربین و رندر
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050510);
+scene.fog = new THREE.FogExp2(0x050510, 0.003);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
 // 2. ساخت زمین و نور
-const gridHelper = new THREE.GridHelper(200, 50, 0x5096ff, 0x222244);
+const gridHelper = new THREE.GridHelper(2000, 100, 0x5096ff, 0x222244);
+gridHelper.position.y = -10;
 scene.add(gridHelper);
-const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-scene.add(ambientLight);
+scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+dirLight.position.set(10, 20, 10);
+scene.add(dirLight);
 
-// 3. ساخت سفینه
-const ship = new THREE.Mesh(
-  new THREE.BoxGeometry(2, 1, 4),
-  new THREE.MeshStandardMaterial({ color: 0x50dcdc })
-);
-ship.position.set(0, 2, 0);
-scene.add(ship);
+// 3. ساخت سفینه (مدل سه‌بعدی زیبا)
+const shipGroup = new THREE.Group();
+// بدنه اصلی
+const bodyGeo = new THREE.ConeGeometry(1, 4, 4);
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0x50dcdc, metalness: 0.8, roughness: 0.2 });
+const body = new THREE.Mesh(bodyGeo, bodyMat);
+body.rotation.x = -Math.PI / 2; // چرخش که نوکش به جلو باشه
+shipGroup.add(body);
+
+// بال‌ها
+const wingGeo = new THREE.BoxGeometry(5, 0.1, 1.5);
+const wingMat = new THREE.MeshStandardMaterial({ color: 0x222244, metalness: 0.9, roughness: 0.1 });
+const wings = new THREE.Mesh(wingGeo, wingMat);
+wings.position.z = 1;
+shipGroup.add(wings);
+
+shipGroup.position.set(0, 0, 0);
+scene.add(shipGroup);
 
 // 4. متغیرهای وضعیت
 let isPiloting = true;
 let touchX = 0, touchY = 0;
-let isMoving = false;
-let moveForward = 0;
+let bullets = [];
+let enemies = [];
+let isFiring = false;
+let fireCooldown = 0;
+let score = 0;
 
-// 5. تنظیمات ورودی لمسی
-document.addEventListener('touchstart', (e) => { touchX = e.touches[0].clientX; touchY = e.touches[0].clientY; });
+// 5. تنظیمات ورودی لمسی (چرخش)
+document.addEventListener('touchstart', (e) => {
+  if (e.target.tagName !== 'BUTTON') {
+    touchX = e.touches[0].clientX; 
+    touchY = e.touches[0].clientY;
+  }
+});
 document.addEventListener('touchmove', (e) => {
+  if (!isPiloting) return; 
   const dx = e.touches[0].clientX - touchX;
   const dy = e.touches[0].clientY - touchY;
   touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
 
-  if (isPiloting) {
-    ship.rotation.y -= dx * 0.005;
-    ship.rotation.x -= dy * 0.003;
-  } else {
-    camera.rotation.y -= dx * 0.005;
-    camera.rotation.x -= dy * 0.005;
-    camera.rotation.x = Math.max(-Math.PI/2, Math.min(Math.PI/2, camera.rotation.x));
-  }
+  shipGroup.rotation.y -= dx * 0.005;
+  shipGroup.rotation.z -= dx * 0.002; // کج شدن هنگام چرخش
 });
 
 // 6. دکمه‌ها
-document.getElementById('btn-switch').addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  isPiloting = !isPiloting;
-  document.getElementById('info').innerText = isPiloting ? 'حالت: پرواز با سفینه' : 'حالت: پیاده نظام';
-});
-
 document.getElementById('btn-fire').addEventListener('touchstart', (e) => {
   e.preventDefault();
+  isFiring = true;
+  e.target.classList.add('active');
 });
 document.getElementById('btn-fire').addEventListener('touchend', (e) => {
   e.preventDefault();
+  isFiring = false;
+  e.target.classList.remove('active');
 });
 
-// 7. حلقه بازی (Game Loop)
+document.getElementById('btn-switch').addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  isPiloting = !isPiloting;
+  document.getElementById('info').innerText = isPiloting ? 'حالت: پرواز' : 'حالت: پیاده';
+});
+
+// 7. توابع ساخت گلوله و دشمن
+function shootBullet() {
+  const bulletGeo = new THREE.SphereGeometry(0.2, 8, 8);
+  const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffdc3c }); // رنگ گلوله
+  const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+  
+  // گلوله از نوک سفینه در بیاد
+  const startPos = new THREE.Vector3(0, 0, -2.5);
+  startPos.applyQuaternion(shipGroup.quaternion);
+  bullet.position.copy(shipGroup.position).add(startPos);
+  
+  bullet.quaternion.copy(shipGroup.quaternion);
+  bullet.userData = { velocity: new THREE.Vector3(0, 0, -1).applyQuaternion(shipGroup.quaternion).multiplyScalar(1.5) };
+  
+  scene.add(bullet);
+  bullets.push(bullet);
+}
+
+let enemySpawnTimer = 0;
+function spawnEnemy() {
+  const enemyGeo = new THREE.BoxGeometry(2, 2, 2);
+  const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3232 });
+  const enemy = new THREE.Mesh(enemyGeo, enemyMat);
+  
+  // دشمن جلوی بازیکن و با فاصله تصادفی ظاهر بشه
+  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipGroup.quaternion);
+  const randomOffset = new THREE.Vector3((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 20);
+  
+  enemy.position.copy(shipGroup.position).add(forward.multiplyScalar(60)).add(randomOffset);
+  scene.add(enemy);
+  enemies.push(enemy);
+}
+
+// 8. حلقه بازی (Game Loop)
 function animate() {
   requestAnimationFrame(animate);
 
   if (isPiloting) {
-    // حرکت سفینه به جلو با یک سرعت ثابت (شبیه شبیه‌ساز پرواز)
-    const forward = new THREE.Vector3(0, 0, -1);
-    forward.applyQuaternion(ship.quaternion);
-    ship.position.add(forward.multiplyScalar(0.2)); // سرعت حرکت
+    // حرکت به جلو
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipGroup.quaternion);
+    shipGroup.position.add(forward.multiplyScalar(0.4));
 
     // دوربین پشت سفینه
-    const relativeOffset = new THREE.Vector3(0, 5, 10);
-    relativeOffset.applyQuaternion(ship.quaternion);
-    camera.position.copy(ship.position).add(relativeOffset);
-    camera.lookAt(ship.position);
-  } else {
-    // دوربین اول‌شخص (پیاده)
-    camera.position.copy(ship.position);
-    camera.position.y += 1.5; 
+    const relativeOffset = new THREE.Vector3(0, 3, 8);
+    relativeOffset.applyQuaternion(shipGroup.quaternion);
+    camera.position.lerp(shipGroup.position.clone().add(relativeOffset), 0.1);
+    camera.lookAt(shipGroup.position.clone().add(forward.multiplyScalar(10))); // نگاه به جلو
+
+    // شلیک رگباری (اگه دکمه نگه داشته شده)
+    if (isFiring) {
+      fireCooldown--;
+      if (fireCooldown <= 0) {
+        shootBullet();
+        fireCooldown = 5; // سرعت شلیک (هر ۵ فریم)
+      }
+    }
+
+    // آپدیت گلوله‌ها
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      const b = bullets[i];
+      b.position.add(b.userData.velocity);
+      
+      // حذف گلوله‌های دور
+      if (b.position.distanceTo(shipGroup.position) > 150) {
+        scene.remove(b);
+        bullets.splice(i, 1);
+      }
+    }
+
+    // ساخت دشمن
+    enemySpawnTimer++;
+    if (enemySpawnTimer > 60) { // هر ۶۰ فریم
+      spawnEnemy();
+      enemySpawnTimer = 0;
+    }
+
+    // آپدیت دشمن‌ها (حرکت به سمت بازیکن)
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      const dir = new THREE.Vector3().subVectors(shipGroup.position, e.position).normalize();
+      e.position.add(dir.multiplyScalar(0.1)); // سرعت حرکت دشمن
+      e.rotation.x += 0.02;
+      e.rotation.y += 0.02;
+
+      // برخورد گلوله با دشمن
+      let destroyed = false;
+      for (let j = bullets.length - 1; j >= 0; j--) {
+        if (e.position.distanceTo(bullets[j].position) < 2) {
+          scene.remove(bullets[j]);
+          bullets.splice(j, 1);
+          destroyed = true;
+          break;
+        }
+      }
+      if (destroyed) {
+        scene.remove(e);
+        enemies.splice(i, 1);
+        score += 10;
+        document.getElementById('info').innerText = 'امتیاز: ' + score;
+      }
+
+      // اگه دشمن به بازیکن برسه
+      if (e.position.distanceTo(shipGroup.position) < 3) {
+         document.getElementById('info').innerText = 'باختی! امتیاز نهایی: ' + score;
+         // ریست کردن بازی
+         setTimeout(() => window.location.reload(), 2000);
+      }
+    }
   }
 
   renderer.render(scene, camera);
