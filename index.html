@@ -3,25 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Star Battle 3D</title>
+<title>Space Station 3D</title>
 <style>
-  body { margin: 0; overflow: hidden; background: #000; font-family: Tahoma; }
+  body { margin: 0; overflow: hidden; background: #000; font-family: Tahoma; touch-action: none; }
   canvas { display: block; }
-  #ui { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 10; }
-  .btn { width: 80px; height: 80px; border-radius: 50%; border: 2px solid #fff; font-size: 14px; font-weight: bold; color: #fff; opacity: 0.8; display: flex; justify-content: center; align-items: center; text-align: center; touch-action: none; }
-  #btn-switch { background: rgba(255, 165, 0, 0.6); }
-  #btn-fire { background: rgba(255, 0, 0, 0.6); }
-  #btn-fire.active { background: rgba(255, 50, 50, 1); box-shadow: 0 0 20px red; }
-  #info { position: absolute; top: 20px; width: 100%; text-align: center; color: #fff; font-size: 20px; pointer-events: none; z-index: 10; }
+  
+  #info { position: absolute; top: 20px; width: 100%; text-align: center; color: #50dcdc; font-size: 20px; font-weight: bold; text-shadow: 0 0 10px #50dcdc; pointer-events: none; z-index: 10; }
+  
+  /* دکمه‌های شیشه‌ای */
+  .glass-btn {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    color: #fff;
+    font-size: 24px;
+    font-weight: bold;
+    border-radius: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    user-select: none;
+    touch-action: none;
+    z-index: 10;
+  }
+  .glass-btn:active { background: rgba(255, 255, 255, 0.4); }
+
+  /* چیدمان دکمه‌های حرکت (پایین چپ) */
+  #move-up    { left: 80px;  bottom: 160px; width: 60px; height: 60px; }
+  #move-left  { left: 20px;  bottom: 100px; width: 60px; height: 60px; }
+  #move-down  { left: 80px;  bottom: 100px; width: 60px; height: 60px; }
+  #move-right { left: 140px; bottom: 100px; width: 60px; height: 60px; }
+
+  /* دکمه شلیک (پایین راست) */
+  #btn-fire {
+    right: 30px; bottom: 50px;
+    width: 90px; height: 90px;
+    border-radius: 50%;
+    background: rgba(220, 50, 50, 0.2);
+    border: 2px solid rgba(255, 100, 100, 0.5);
+    color: #ff5050;
+  }
+  #btn-fire:active { background: rgba(255, 80, 80, 0.6); }
+
+  #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); border: 2px solid rgba(255, 255, 255, 0.5); border-radius: 50%; z-index: 5; pointer-events: none; }
 </style>
 </head>
 <body>
 
-<div id="info">آماده شلیک...</div>
-<div id="ui">
-  <button class="btn" id="btn-switch">SWITCH<br>پیاده/سوار</button>
-  <button class="btn" id="btn-fire">FIRE</button>
-</div>
+<div id="info">پایگاه فضایی</div>
+<div id="crosshair"></div>
+
+<!-- دکمه‌های شیشه‌ای حرکت -->
+<button class="glass-btn" id="move-up">▲</button>
+<button class="glass-btn" id="move-left">◀</button>
+<button class="glass-btn" id="move-down">▼</button>
+<button class="glass-btn" id="move-right">▶</button>
+
+<!-- دکمه شیشه‌ای شلیک -->
+<button class="glass-btn" id="btn-fire">FIRE</button>
 
 <script type="importmap">
 {
@@ -34,175 +76,159 @@
 <script type="module">
 import * as THREE from 'three';
 
-// 1. راه‌اندازی صحنه، دوربین و رندر
+// 1. راه‌اندازی صحنه
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x050510);
-scene.fog = new THREE.FogExp2(0x050510, 0.003);
+scene.background = new THREE.Color(0x050510); // فضای تاریک
+scene.fog = new THREE.Fog(0x050510, 20, 80); // مه فضایی
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// 2. ساخت زمین و نور
-const gridHelper = new THREE.GridHelper(2000, 100, 0x5096ff, 0x222244);
-gridHelper.position.y = -10;
-scene.add(gridHelper);
-scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-const dirLight = new THREE.DirectionalLight(0xffffff, 2);
+// 2. نورپردازی
+scene.add(new THREE.AmbientLight(0x404060, 2)); // نور ملایم محیط
+const dirLight = new THREE.DirectionalLight(0x50dcdc, 1.5); // نور فیروزه‌ای
 dirLight.position.set(10, 20, 10);
 scene.add(dirLight);
 
-// 3. ساخت سفینه (مدل سه‌بعدی زیبا)
-const shipGroup = new THREE.Group();
-const bodyGeo = new THREE.ConeGeometry(1, 4, 4);
-const bodyMat = new THREE.MeshStandardMaterial({ color: 0x50dcdc, metalness: 0.8, roughness: 0.2 });
-const body = new THREE.Mesh(bodyGeo, bodyMat);
-body.rotation.x = -Math.PI / 2;
-shipGroup.add(body);
+// 3. ساخت پایگاه (کف و دیوارها)
+const floorGeo = new THREE.PlaneGeometry(100, 100, 20, 20);
+const floorMat = new THREE.MeshStandardMaterial({ color: 0x222233, wireframe: true }); // کف شبکه‌ای
+const floor = new THREE.Mesh(floorGeo, floorMat);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
 
-const wingGeo = new THREE.BoxGeometry(5, 0.1, 1.5);
-const wingMat = new THREE.MeshStandardMaterial({ color: 0x222244, metalness: 0.9, roughness: 0.1 });
-const wings = new THREE.Mesh(wingGeo, wingMat);
-wings.position.z = 1;
-shipGroup.add(wings);
+// ساخت دیوارها (حس اتاق پایگاه)
+const wallMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.8, roughness: 0.2 });
+function createWall(x, z, width, depth) {
+  const wall = new THREE.Mesh(new THREE.BoxGeometry(width, 10, depth), wallMat);
+  wall.position.set(x, 5, z);
+  scene.add(wall);
+}
+// دیوارهای اطراف
+createWall(0, -50, 100, 2);
+createWall(0, 50, 100, 2);
+createWall(-50, 0, 2, 100);
+createWall(50, 0, 2, 100);
 
-shipGroup.position.set(0, 0, 0);
-scene.add(shipGroup);
+// چند تا ستون داخل پایگاه
+const pillarGeo = new THREE.CylinderGeometry(1, 1, 10, 8);
+const pillarMat = new THREE.MeshStandardMaterial({ color: 0x50dcdc, metalness: 0.9 });
+for(let i=0; i<4; i++) {
+  const pillar = new THREE.Mesh(pillarGeo, pillarMat);
+  pillar.position.set((i%2===0?1:-1)*15, 5, (i<2?1:-1)*15);
+  scene.add(pillar);
+}
 
-// 4. متغیرهای وضعیت
-let isPiloting = true;
-let touchX = 0, touchY = 0;
-let bullets = [];
-let enemies = [];
-let isFiring = false;
-let fireCooldown = 0;
-let score = 0;
+// 4. متغیرهای بازیکن
+let playerPos = new THREE.Vector3(0, 1.6, 0); // شروع وسط پایگاه
+let playerYaw = 0;
+let playerPitch = 0;
+const moveSpeed = 0.3;
 
-// 5. تنظیمات ورودی لمسی (چرخش)
+// 5. تنظیمات ورودی (حرکت با دکمه‌ها)
+let keys = { up: false, down: false, left: false, right: false };
+
+function setupBtn(id, key) {
+  const btn = document.getElementById(id);
+  btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[key] = true; }, {passive: false});
+  btn.addEventListener('touchend', (e) => { e.preventDefault(); keys[key] = false; }, {passive: false});
+  btn.addEventListener('mousedown', () => keys[key] = true);
+  btn.addEventListener('mouseup', () => keys[key] = false);
+  btn.addEventListener('mouseleave', () => keys[key] = false);
+}
+setupBtn('move-up', 'up');
+setupBtn('move-down', 'down');
+setupBtn('move-left', 'left');
+setupBtn('move-right', 'right');
+
+// 6. چرخش دوربین با کشیدن انگشت روی صفحه
+let lastTouchX = 0, lastTouchY = 0;
 document.addEventListener('touchstart', (e) => {
   if (e.target.tagName !== 'BUTTON') {
-    touchX = e.touches[0].clientX; 
-    touchY = e.touches[0].clientY;
+    lastTouchX = e.touches[0].clientX;
+    lastTouchY = e.touches[0].clientY;
+  }
+});
+document.addEventListener('touchmove', (e) => {
+  if (e.target.tagName !== 'BUTTON') {
+    let dx = e.touches[0].clientX - lastTouchX;
+    let dy = e.touches[0].clientY - lastTouchY;
+    playerYaw -= dx * 0.005;
+    playerPitch -= dy * 0.005;
+    playerPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, playerPitch));
+    lastTouchX = e.touches[0].clientX;
+    lastTouchY = e.touches[0].clientY;
   }
 }, {passive: false});
-document.addEventListener('touchmove', (e) => {
-  if (!isPiloting) return; 
-  const dx = e.touches[0].clientX - touchX;
-  const dy = e.touches[0].clientY - touchY;
-  touchX = e.touches[0].clientX; touchY = e.touches[0].clientY;
 
-  shipGroup.rotation.y -= dx * 0.005;
-  shipGroup.rotation.z -= dx * 0.002; // کج شدن هنگام چرخش
-}, {passive: false});
+// 7. شلیک
+let isFiring = false;
+let bullets = [];
+let fireCooldown = 0;
 
-// 6. دکمه‌ها
-document.getElementById('btn-fire').addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  isFiring = true;
-  e.target.classList.add('active');
-}, {passive: false});
-document.getElementById('btn-fire').addEventListener('touchend', (e) => {
-  e.preventDefault();
-  isFiring = false;
-  e.target.classList.remove('active');
-}, {passive: false});
+const btnFire = document.getElementById('btn-fire');
+btnFire.addEventListener('touchstart', (e) => { e.preventDefault(); isFiring = true; }, {passive: false});
+btnFire.addEventListener('touchend', (e) => { e.preventDefault(); isFiring = false; }, {passive: false});
 
-document.getElementById('btn-switch').addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  isPiloting = !isPiloting;
-  document.getElementById('info').innerText = isPiloting ? 'حالت: پرواز' : 'حالت: پیاده';
-}, {passive: false});
-
-// 7. توابع ساخت گلوله و دشمن
 function shootBullet() {
-  const bulletGeo = new THREE.SphereGeometry(0.2, 8, 8);
-  const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffdc3c });
-  const bullet = new THREE.Mesh(bulletGeo, bulletMat);
+  const bGeo = new THREE.SphereGeometry(0.1, 4, 4);
+  const bMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+  const bullet = new THREE.Mesh(bGeo, bMat);
   
-  const startPos = new THREE.Vector3(0, 0, -2.5);
-  startPos.applyQuaternion(shipGroup.quaternion);
-  bullet.position.copy(shipGroup.position).add(startPos);
+  const startPos = playerPos.clone();
+  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
   
-  bullet.quaternion.copy(shipGroup.quaternion);
-  bullet.userData = { velocity: new THREE.Vector3(0, 0, -1).applyQuaternion(shipGroup.quaternion).multiplyScalar(1.5) };
+  bullet.position.copy(startPos).add(dir.multiplyScalar(1));
+  bullet.userData = { velocity: dir.multiplyScalar(1.5), life: 60 };
   
   scene.add(bullet);
   bullets.push(bullet);
 }
 
-let enemySpawnTimer = 0;
-function spawnEnemy() {
-  const enemyGeo = new THREE.BoxGeometry(2, 2, 2);
-  const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3232 });
-  const enemy = new THREE.Mesh(enemyGeo, enemyMat);
-  
-  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipGroup.quaternion);
-  const randomOffset = new THREE.Vector3((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 20);
-  
-  enemy.position.copy(shipGroup.position).add(forward.multiplyScalar(60)).add(randomOffset);
-  scene.add(enemy);
-  enemies.push(enemy);
-}
-
-// 8. حلقه بازی (Game Loop)
+// 8. حلقه بازی
 function animate() {
   requestAnimationFrame(animate);
 
-  if (isPiloting) {
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipGroup.quaternion);
-    shipGroup.position.add(forward.multiplyScalar(0.4));
+  // محاسبه جهت‌ها بر اساس زاویه دوربین
+  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+  forward.y = 0; forward.normalize();
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+  right.y = 0; right.normalize();
 
-    const relativeOffset = new THREE.Vector3(0, 3, 8);
-    relativeOffset.applyQuaternion(shipGroup.quaternion);
-    camera.position.lerp(shipGroup.position.clone().add(relativeOffset), 0.1);
-    camera.lookAt(shipGroup.position.clone().add(forward.multiplyScalar(10)));
+  // حرکت با دکمه‌ها
+  if (keys.up) playerPos.add(forward.clone().multiplyScalar(moveSpeed));
+  if (keys.down) playerPos.sub(forward.clone().multiplyScalar(moveSpeed));
+  if (keys.left) playerPos.sub(right.clone().multiplyScalar(moveSpeed));
+  if (keys.right) playerPos.add(right.clone().multiplyScalar(moveSpeed));
 
-    if (isFiring) {
-      fireCooldown--;
-      if (fireCooldown <= 0) {
-        shootBullet();
-        fireCooldown = 5;
-      }
+  // محدود کردن بازیکن داخل پایگاه (بین ۴۸- تا ۴۸)
+  playerPos.x = Math.max(-48, Math.min(48, playerPos.x));
+  playerPos.z = Math.max(-48, Math.min(48, playerPos.z));
+  playerPos.y = 1.6; // قد بازیکن
+
+  // اعمال دوربین
+  camera.position.copy(playerPos);
+  camera.rotation.set(playerPitch, playerYaw, 0, 'YXZ');
+
+  // شلیک رگباری
+  if (isFiring) {
+    fireCooldown--;
+    if (fireCooldown <= 0) {
+      shootBullet();
+      fireCooldown = 6;
     }
+  }
 
-    for (let i = bullets.length - 1; i >= 0; i--) {
-      const b = bullets[i];
-      b.position.add(b.userData.velocity);
-      if (b.position.distanceTo(shipGroup.position) > 150) {
-        scene.remove(b);
-        bullets.splice(i, 1);
-      }
-    }
-
-    enemySpawnTimer++;
-    if (enemySpawnTimer > 60) {
-      spawnEnemy();
-      enemySpawnTimer = 0;
-    }
-
-    for (let i = enemies.length - 1; i >= 0; i--) {
-      const e = enemies[i];
-      const dir = new THREE.Vector3().subVectors(shipGroup.position, e.position).normalize();
-      e.position.add(dir.multiplyScalar(0.1));
-      e.rotation.x += 0.02;
-      e.rotation.y += 0.02;
-
-      let destroyed = false;
-      for (let j = bullets.length - 1; j >= 0; j--) {
-        if (e.position.distanceTo(bullets[j].position) < 2) {
-          scene.remove(bullets[j]);
-          bullets.splice(j, 1);
-          destroyed = true;
-          break;
-        }
-      }
-      if (destroyed) {
-        scene.remove(e);
-        enemies.splice(i, 1);
-        score += 10;
-        document.getElementById('info').innerText = 'امتیاز: ' + score;
-      }
+  // آپدیت گلوله‌ها
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    const b = bullets[i];
+    b.position.add(b.userData.velocity);
+    b.userData.life--;
+    if (b.userData.life <= 0) {
+      scene.remove(b);
+      bullets.splice(i, 1);
     }
   }
 
