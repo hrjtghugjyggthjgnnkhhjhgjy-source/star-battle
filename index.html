@@ -19,7 +19,7 @@
 
 <div id="info">آماده شلیک...</div>
 <div id="ui">
-  <button class="btn" id="btn-switch">پیاده<br>شدن</button>
+  <button class="btn" id="btn-switch">SWITCH<br>پیاده/سوار</button>
   <button class="btn" id="btn-fire">FIRE</button>
 </div>
 
@@ -55,14 +55,12 @@ scene.add(dirLight);
 
 // 3. ساخت سفینه (مدل سه‌بعدی زیبا)
 const shipGroup = new THREE.Group();
-// بدنه اصلی
 const bodyGeo = new THREE.ConeGeometry(1, 4, 4);
 const bodyMat = new THREE.MeshStandardMaterial({ color: 0x50dcdc, metalness: 0.8, roughness: 0.2 });
 const body = new THREE.Mesh(bodyGeo, bodyMat);
-body.rotation.x = -Math.PI / 2; // چرخش که نوکش به جلو باشه
+body.rotation.x = -Math.PI / 2;
 shipGroup.add(body);
 
-// بال‌ها
 const wingGeo = new THREE.BoxGeometry(5, 0.1, 1.5);
 const wingMat = new THREE.MeshStandardMaterial({ color: 0x222244, metalness: 0.9, roughness: 0.1 });
 const wings = new THREE.Mesh(wingGeo, wingMat);
@@ -87,7 +85,7 @@ document.addEventListener('touchstart', (e) => {
     touchX = e.touches[0].clientX; 
     touchY = e.touches[0].clientY;
   }
-});
+}, {passive: false});
 document.addEventListener('touchmove', (e) => {
   if (!isPiloting) return; 
   const dx = e.touches[0].clientX - touchX;
@@ -96,33 +94,32 @@ document.addEventListener('touchmove', (e) => {
 
   shipGroup.rotation.y -= dx * 0.005;
   shipGroup.rotation.z -= dx * 0.002; // کج شدن هنگام چرخش
-});
+}, {passive: false});
 
 // 6. دکمه‌ها
 document.getElementById('btn-fire').addEventListener('touchstart', (e) => {
   e.preventDefault();
   isFiring = true;
   e.target.classList.add('active');
-});
+}, {passive: false});
 document.getElementById('btn-fire').addEventListener('touchend', (e) => {
   e.preventDefault();
   isFiring = false;
   e.target.classList.remove('active');
-});
+}, {passive: false});
 
 document.getElementById('btn-switch').addEventListener('touchstart', (e) => {
   e.preventDefault();
   isPiloting = !isPiloting;
   document.getElementById('info').innerText = isPiloting ? 'حالت: پرواز' : 'حالت: پیاده';
-});
+}, {passive: false});
 
 // 7. توابع ساخت گلوله و دشمن
 function shootBullet() {
   const bulletGeo = new THREE.SphereGeometry(0.2, 8, 8);
-  const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffdc3c }); // رنگ گلوله
+  const bulletMat = new THREE.MeshBasicMaterial({ color: 0xffdc3c });
   const bullet = new THREE.Mesh(bulletGeo, bulletMat);
   
-  // گلوله از نوک سفینه در بیاد
   const startPos = new THREE.Vector3(0, 0, -2.5);
   startPos.applyQuaternion(shipGroup.quaternion);
   bullet.position.copy(shipGroup.position).add(startPos);
@@ -140,7 +137,6 @@ function spawnEnemy() {
   const enemyMat = new THREE.MeshStandardMaterial({ color: 0xff3232 });
   const enemy = new THREE.Mesh(enemyGeo, enemyMat);
   
-  // دشمن جلوی بازیکن و با فاصله تصادفی ظاهر بشه
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipGroup.quaternion);
   const randomOffset = new THREE.Vector3((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 20);
   
@@ -154,53 +150,44 @@ function animate() {
   requestAnimationFrame(animate);
 
   if (isPiloting) {
-    // حرکت به جلو
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipGroup.quaternion);
     shipGroup.position.add(forward.multiplyScalar(0.4));
 
-    // دوربین پشت سفینه
     const relativeOffset = new THREE.Vector3(0, 3, 8);
     relativeOffset.applyQuaternion(shipGroup.quaternion);
     camera.position.lerp(shipGroup.position.clone().add(relativeOffset), 0.1);
-    camera.lookAt(shipGroup.position.clone().add(forward.multiplyScalar(10))); // نگاه به جلو
+    camera.lookAt(shipGroup.position.clone().add(forward.multiplyScalar(10)));
 
-    // شلیک رگباری (اگه دکمه نگه داشته شده)
     if (isFiring) {
       fireCooldown--;
       if (fireCooldown <= 0) {
         shootBullet();
-        fireCooldown = 5; // سرعت شلیک (هر ۵ فریم)
+        fireCooldown = 5;
       }
     }
 
-    // آپدیت گلوله‌ها
     for (let i = bullets.length - 1; i >= 0; i--) {
       const b = bullets[i];
       b.position.add(b.userData.velocity);
-      
-      // حذف گلوله‌های دور
       if (b.position.distanceTo(shipGroup.position) > 150) {
         scene.remove(b);
         bullets.splice(i, 1);
       }
     }
 
-    // ساخت دشمن
     enemySpawnTimer++;
-    if (enemySpawnTimer > 60) { // هر ۶۰ فریم
+    if (enemySpawnTimer > 60) {
       spawnEnemy();
       enemySpawnTimer = 0;
     }
 
-    // آپدیت دشمن‌ها (حرکت به سمت بازیکن)
     for (let i = enemies.length - 1; i >= 0; i--) {
       const e = enemies[i];
       const dir = new THREE.Vector3().subVectors(shipGroup.position, e.position).normalize();
-      e.position.add(dir.multiplyScalar(0.1)); // سرعت حرکت دشمن
+      e.position.add(dir.multiplyScalar(0.1));
       e.rotation.x += 0.02;
       e.rotation.y += 0.02;
 
-      // برخورد گلوله با دشمن
       let destroyed = false;
       for (let j = bullets.length - 1; j >= 0; j--) {
         if (e.position.distanceTo(bullets[j].position) < 2) {
@@ -215,13 +202,6 @@ function animate() {
         enemies.splice(i, 1);
         score += 10;
         document.getElementById('info').innerText = 'امتیاز: ' + score;
-      }
-
-      // اگه دشمن به بازیکن برسه
-      if (e.position.distanceTo(shipGroup.position) < 3) {
-         document.getElementById('info').innerText = 'باختی! امتیاز نهایی: ' + score;
-         // ریست کردن بازی
-         setTimeout(() => window.location.reload(), 2000);
       }
     }
   }
