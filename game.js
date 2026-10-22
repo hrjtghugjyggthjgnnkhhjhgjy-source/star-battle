@@ -4,7 +4,7 @@ import { initAudio, playShootSound } from './audio.js';
 // ================= 1. تنظیمات صحنه =================
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87CEEB); 
-scene.fog = new THREE.Fog(0x87CEEB, 200, 600); 
+scene.fog = new THREE.Fog(0x87CEEB, 100, 400); 
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -14,127 +14,60 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// ================= 2. نورپردازی =================
-scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.0));
-const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
-dirLight.position.set(150, 200, 100); 
+// ================= 2. نورپردازی (با کیفیت) =================
+scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5)); // نور محیطی
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(50, 100, 50); 
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
-dirLight.shadow.camera.left = -200;
-dirLight.shadow.camera.right = 200;
-dirLight.shadow.camera.top = 200;
-dirLight.shadow.camera.bottom = -200;
+dirLight.shadow.camera.left = -100;
+dirLight.shadow.camera.right = 100;
+dirLight.shadow.camera.top = 100;
+dirLight.shadow.camera.bottom = -100;
 scene.add(dirLight);
 
-// ================= 3. زمین و جاده =================
+// ================= 3. زمین =================
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(1000, 1000), 
+  new THREE.PlaneGeometry(500, 500), 
   new THREE.MeshStandardMaterial({ color: 0x2a2a2a })
 );
 ground.rotation.x = -Math.PI / 2; 
 ground.receiveShadow = true;
-ground.userData.isGround = true;
 scene.add(ground);
 
-// ساخت خیابان‌ها
-function createRoad(x, z, w, d, isHorizontal) {
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color: 0x111111 }));
-  road.rotation.x = -Math.PI / 2;
-  road.position.set(x, 0.01, z);
-  road.receiveShadow = true;
-  scene.add(road);
+// ================= 4. جاده =================
+const roadMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+const road = new THREE.Mesh(new THREE.PlaneGeometry(20, 500), roadMat);
+road.rotation.x = -Math.PI / 2;
+road.position.set(0, 0.01, 0);
+road.receiveShadow = true;
+scene.add(road);
 
-  const lineMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-  if (isHorizontal) {
-    for (let i = x - w/2 + 20; i < x + w/2; i += 40) {
-      const line = new THREE.Mesh(new THREE.PlaneGeometry(20, 1.5), lineMat);
-      line.rotation.x = -Math.PI / 2;
-      line.position.set(i, 0.02, z);
-      scene.add(line);
-    }
-  } else {
-    for (let i = z - d/2 + 20; i < z + d/2; i += 40) {
-      const line = new THREE.Mesh(new THREE.PlaneGeometry(1.5, 20), lineMat);
-      line.rotation.x = -Math.PI / 2;
-      line.position.set(x, 0.02, i);
-      scene.add(line);
-    }
-  }
-}
-createRoad(0, 0, 1000, 40, true);   
-createRoad(0, 200, 1000, 40, true); 
-createRoad(0, -200, 1000, 40, true); 
-createRoad(0, 0, 40, 1000, false);   
-createRoad(200, 0, 40, 1000, false); 
-createRoad(-200, 0, 40, 1000, false); 
-
-// ================= 4. فرودگاه و پایگاه فضایی =================
-// باند فرودگاه
-const runwayMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-const runway = new THREE.Mesh(new THREE.PlaneGeometry(40, 200), runwayMat);
-runway.rotation.x = -Math.PI / 2;
-runway.position.set(0, 0.03, -100);
-runway.receiveShadow = true;
-scene.add(runway);
-
-// خط‌کشی باند فرود
-const runwayLineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-for(let i = -190; i < -10; i += 20) {
-  const line = new THREE.Mesh(new THREE.PlaneGeometry(2, 10), runwayLineMat);
+// خط‌کشی جاده
+const lineMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+for (let i = -240; i < 240; i += 30) {
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(1, 15), lineMat);
   line.rotation.x = -Math.PI / 2;
-  line.position.set(0, 0.04, i);
+  line.position.set(0, 0.02, i);
   scene.add(line);
 }
 
-// برج مراقبت
-const towerGroup = new THREE.Group();
-const towerBase = new THREE.Mesh(new THREE.CylinderGeometry(3, 4, 20, 8), new THREE.MeshStandardMaterial({ color: 0xcccccc }));
-towerBase.position.y = 10; towerBase.castShadow = true; towerGroup.add(towerBase);
-const towerTop = new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 4, 8), new THREE.MeshStandardMaterial({ color: 0x333333, transparent: true, opacity: 0.8 }));
-towerTop.position.y = 22; towerTop.castShadow = true; towerGroup.add(towerTop);
-towerGroup.position.set(-30, 0, -100);
-scene.add(towerGroup);
-
-// آشیانه
-const hangarMat = new THREE.MeshStandardMaterial({ color: 0x777777, metalness: 0.5, roughness: 0.5 });
-const hangar = new THREE.Mesh(new THREE.BoxGeometry(40, 15, 30), hangarMat);
-hangar.position.set(35, 7.5, -100);
-hangar.castShadow = true; hangar.receiveShadow = true;
-scene.add(hangar);
-const hangarRoof = new THREE.Mesh(new THREE.CylinderGeometry(15, 15, 40, 16, 1, false, 0, Math.PI), hangarMat);
-hangarRoof.rotation.z = Math.PI / 2;
-hangarRoof.position.set(35, 15, -100);
-hangarRoof.castShadow = true;
-scene.add(hangarRoof);
-
-// سکوی پرتاب
-const padMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.2, metalness: 0.8 });
-const launchPad = new THREE.Mesh(new THREE.CylinderGeometry(20, 20, 1, 32), padMat);
-launchPad.position.set(0, 0.05, -250);
-launchPad.receiveShadow = true;
-scene.add(launchPad);
-const padLineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
-for(let i = 0; i < 4; i++) {
-  const line = new THREE.Mesh(new THREE.PlaneGeometry(30, 1), padLineMat);
-  line.rotation.x = -Math.PI / 2;
-  line.rotation.z = (Math.PI / 4) * i;
-  line.position.set(0, 0.06, -250);
-  scene.add(line);
-}
-
-// ================= 5. ساختمون‌های شهر =================
+// ================= 5. ساخت ساختمون‌ها (مکعب‌های باکیفیت) =================
 const obstacles = [];
 const buildingsGroup = new THREE.Group();
 scene.add(buildingsGroup);
 
+// ساخت تکسچر پنجره‌ها
 const canvas = document.createElement('canvas');
 canvas.width = 256; canvas.height = 256;
 const ctx = canvas.getContext('2d');
-ctx.fillStyle = '#888'; ctx.fillRect(0, 0, 256, 256); 
-ctx.fillStyle = '#222'; 
-for (let y = 10; y < 256; y += 30) {
-  for (let x = 10; x < 256; x += 30) ctx.fillRect(x, y, 20, 20);
+ctx.fillStyle = '#888888'; ctx.fillRect(0, 0, 256, 256); 
+ctx.fillStyle = '#222222'; 
+for (let y = 10; y < 256; y += 40) {
+  for (let x = 10; x < 256; x += 40) {
+    ctx.fillRect(x, y, 25, 25); // پنجره‌ها
+  }
 }
 const windowTexture = new THREE.CanvasTexture(canvas);
 windowTexture.wrapS = THREE.RepeatWrapping;
@@ -142,41 +75,55 @@ windowTexture.wrapT = THREE.RepeatWrapping;
 
 function createBuilding(x, z, w, h, d) {
   windowTexture.repeat.set(w/10, h/10); 
-  const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ map: windowTexture, roughness: 0.8 }));
+  const b = new THREE.Mesh(
+    new THREE.BoxGeometry(w, h, d), 
+    new THREE.MeshStandardMaterial({ map: windowTexture, roughness: 0.7 })
+  );
   b.position.set(x, h/2, z); 
-  b.castShadow = true; b.receiveShadow = true;
+  b.castShadow = true; 
+  b.receiveShadow = true;
   buildingsGroup.add(b);
+  
+  // ثبت برخورد
   obstacles.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2, maxZ: z + d/2 });
 }
 
-createBuilding(60, 60, 30, 100, 30);
-createBuilding(100, 100, 40, 150, 40);
-createBuilding(-60, 60, 30, 120, 30);
-createBuilding(-100, 100, 40, 80, 40);
-createBuilding(60, -60, 30, 90, 30);
-createBuilding(100, -100, 40, 140, 40);
-createBuilding(-60, -60, 30, 110, 30);
-createBuilding(-100, -100, 40, 160, 40);
+// چیدن ساختمون‌ها دور جاده (فاصله‌دار و با ابعاد منطقی)
+createBuilding(-30, -50, 20, 40, 20);
+createBuilding(-30, -100, 25, 60, 25);
+createBuilding(-30, -150, 20, 50, 20);
 
-// ================= 6. ماشین‌ها (بدون ترافیک هوشمند ساده) =================
-const cars = [];
-function createCar(color, startX, startZ, direction) {
-  const carGroup = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), new THREE.MeshStandardMaterial({ color: color }));
-  body.position.y = 0.5; body.castShadow = true; carGroup.add(body);
-  const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 2), new THREE.MeshStandardMaterial({ color: 0x111111 }));
-  cabin.position.set(0, 1.4, -0.5); cabin.castShadow = true; carGroup.add(cabin);
+createBuilding(30, -50, 20, 45, 20);
+createBuilding(30, -100, 25, 70, 25);
+createBuilding(30, -150, 20, 55, 20);
 
-  if (direction === 'x') carGroup.rotation.y = Math.PI / 2;
-  carGroup.position.set(startX, 0, startZ);
-  scene.add(carGroup);
-  cars.push({ mesh: carGroup, direction: direction, speed: 0.2 });
+// ================= 6. فرودگاه =================
+// باند فرودگاه (انتهای جاده)
+const runway = new THREE.Mesh(new THREE.PlaneGeometry(40, 100), new THREE.MeshStandardMaterial({ color: 0x222222 }));
+runway.rotation.x = -Math.PI / 2;
+runway.position.set(0, 0.03, -200);
+runway.receiveShadow = true;
+scene.add(runway);
+
+// خط‌کشی باند فرود
+for(let i = -240; i < -160; i += 15) {
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(2, 8), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+  line.rotation.x = -Math.PI / 2;
+  line.position.set(0, 0.04, i);
+  scene.add(line);
 }
-createCar(0xff0000, -300, 10, 'x');
-createCar(0x0000ff, 300, -10, 'x');
+
+// برج مراقبت (فرودگاه)
+const towerBase = new THREE.Mesh(new THREE.CylinderGeometry(4, 5, 30, 8), new THREE.MeshStandardMaterial({ color: 0xcccccc }));
+towerBase.position.set(-25, 15, -200);
+towerBase.castShadow = true; scene.add(towerBase);
+
+const towerTop = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 5, 8), new THREE.MeshStandardMaterial({ color: 0x111111, transparent: true, opacity: 0.8 }));
+towerTop.position.set(-25, 32, -200);
+towerTop.castShadow = true; scene.add(towerTop);
 
 // ================= 7. بازیکن =================
-let playerPos = new THREE.Vector3(0, 1.6, -100); // شروع در فرودگاه
+let playerPos = new THREE.Vector3(0, 1.6, -180); // شروع در فرودگاه
 let playerYaw = 0, playerPitch = 0;
 let moveForward = 0, moveRight = 0;
 let isFiring = false, fireCooldown = 0;
@@ -184,7 +131,7 @@ let bullets = [];
 let decals = [];
 const playerRadius = 0.5; 
 
-// ================= 8. کنترل‌ها =================
+// ================= 8. کنترل‌ها (جوی‌استیک و شلیک) =================
 const joyZone = document.getElementById('joystick-zone');
 const joyKnob = document.getElementById('joystick-knob');
 const btnFire = document.getElementById('btn-fire');
@@ -208,8 +155,7 @@ document.addEventListener('touchstart', (e) => {
       isFiring = true;
     } else {
       if (cameraTouchId === null) {
-        cameraTouchId = touch.identifier;
-        lastTouchX = touch.clientX; lastTouchY = touch.clientY;
+        cameraTouchId = touch.identifier; lastTouchX = touch.clientX; lastTouchY = touch.clientY;
       }
     }
   }
@@ -240,8 +186,7 @@ document.addEventListener('touchend', (e) => {
   for (let i = 0; i < e.changedTouches.length; i++) {
     const touch = e.changedTouches[i];
     if (touch.identifier === joyTouchId) {
-      joyTouchId = null; joyKnob.style.transform = 'translate(0px, 0px)';
-      moveForward = 0; moveRight = 0;
+      joyTouchId = null; joyKnob.style.transform = 'translate(0px, 0px)'; moveForward = 0; moveRight = 0;
     }
     if (touch.target === btnFire) isFiring = false;
     if (touch.identifier === cameraTouchId) cameraTouchId = null;
@@ -259,12 +204,11 @@ function shootBullet() {
   scene.add(b); bullets.push(b);
 
   raycaster.set(camera.position, dir);
-  const intersects = raycaster.intersectObjects([buildingsGroup, towerGroup, hangar, hangarRoof, launchPad], true);
+  const intersects = raycaster.intersectObjects([buildingsGroup, towerBase, towerTop], true);
 
   if (intersects.length > 0) {
     const hit = intersects[0];
-    const decalMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false });
-    const decal = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), decalMat);
+    const decal = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), new THREE.MeshBasicMaterial({ color: 0x000000, depthWrite: false }));
     decal.position.copy(hit.point);
     decal.lookAt(hit.point.clone().add(hit.face.normal));
     scene.add(decal);
@@ -285,12 +229,7 @@ function checkCollision(newX, newZ) {
 function animate() {
   requestAnimationFrame(animate);
 
-  cars.forEach(car => {
-    car.mesh.position.x += car.speed;
-    if (car.mesh.position.x > 400) car.mesh.position.x = -400;
-  });
-
-  const moveSpeed = 0.3;
+  const moveSpeed = 0.2;
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); forward.y = 0; forward.normalize();
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
   
@@ -316,8 +255,7 @@ function animate() {
   const currentTime = performance.now();
   for (let i = decals.length - 1; i >= 0; i--) {
     if (currentTime - decals[i].timeCreated > 40000) {
-      scene.remove(decals[i].mesh);
-      decals.splice(i, 1);
+      scene.remove(decals[i].mesh); decals.splice(i, 1);
     }
   }
   
