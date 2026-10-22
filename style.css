@@ -1,0 +1,56 @@
+body { 
+  margin: 0; 
+  overflow: hidden; 
+  background: #000; 
+  font-family: Tahoma; 
+}
+
+canvas { 
+  display: block; 
+}
+
+#ui {
+  position: absolute; 
+  bottom: 20px; 
+  width: 100%; 
+  display: flex; 
+  justify-content: space-between; 
+  padding: 0 20px; 
+  box-sizing: border-box;
+  z-index: 10;
+}
+
+.btn {
+  width: 80px; 
+  height: 80px; 
+  border-radius: 50%; 
+  border: 2px solid #fff; 
+  font-size: 14px; 
+  font-weight: bold; 
+  color: #fff; 
+  opacity: 0.8;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  touch-action: none;
+}
+
+#btn-switch { 
+  background: rgba(255, 165, 0, 0.6); 
+}
+
+#btn-fire { 
+  background: rgba(255, 0, 0, 0.6); 
+}
+
+#info {
+  position: absolute; 
+  top: 20px; 
+  width: 100%; 
+  text-align: center; 
+  color: #fff; 
+  font-size: 20px; 
+  pointer-events: none;
+  z-index: 10;
+}
