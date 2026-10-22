@@ -8,43 +8,47 @@
   body { margin: 0; overflow: hidden; background: #000; font-family: Tahoma; touch-action: none; }
   canvas { display: block; }
   
-  #joystick-zone { 
-    position: absolute; bottom: 30px; left: 30px; width: 130px; height: 130px; 
-    background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(5px);
-    border: 2px solid rgba(255, 255, 255, 0.3); border-radius: 50%; z-index: 10;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  /* دکمه شیشه‌ای FIRE */
+  #btn-fire { 
+    position: absolute; bottom: 40px; right: 30px; width: 90px; height: 90px; 
+    border-radius: 50%; border: 3px solid rgba(255, 80, 80, 0.8);
+    background: rgba(255, 0, 0, 0.2); backdrop-filter: blur(5px);
+    color: #fff; font-weight: bold; font-size: 18px;
+    display: flex; justify-content: center; align-items: center;
+    z-index: 10; box-shadow: 0 0 20px rgba(255,0,0,0.4);
+    touch-action: none;
   }
-  #joystick-knob { 
-    position: absolute; top: 40px; left: 40px; width: 50px; height: 50px; 
-    background: rgba(255, 255, 255, 0.5); border-radius: 50%; 
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-  }
-  
-  .glass-btn {
-    position: absolute; border-radius: 50%; border: 2px solid rgba(255,255,255,0.4);
-    background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(5px);
-    color: #fff; font-weight: bold; z-index: 10; 
-    display: flex; justify-content: center; align-items: center; 
-    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-    text-shadow: 1px 1px 3px #000;
-  }
-  .glass-btn:active { background: rgba(255, 255, 255, 0.4); transform: scale(0.95); }
+  #btn-fire:active { background: rgba(255, 0, 0, 0.6); transform: scale(0.95); }
 
-  #btn-fire { bottom: 40px; right: 30px; width: 85px; height: 85px; font-size: 18px; border-color: rgba(255, 80, 80, 0.6); }
-  #btn-jump { bottom: 140px; right: 45px; width: 70px; height: 70px; font-size: 14px; border-color: rgba(80, 255, 80, 0.6); }
-  
-  #crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); border: 2px solid rgba(255, 255, 255, 0.6); border-radius: 50%; z-index: 5; pointer-events: none; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
-  #info { position: absolute; top: 20px; width: 100%; text-align: center; color: #fff; font-weight: bold; font-size: 20px; text-shadow: 1px 1px 5px #000; z-index: 10; pointer-events: none; }
+  /* ناحیه جوی‌استیک (شفاف) */
+  #joystick-zone {
+    position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px;
+    z-index: 10; touch-action: none;
+    /* برای تست دیده میشه، در نسخه نهایی میتونی شفافش کنی */
+    background: rgba(255, 255, 255, 0.05); border-radius: 50%;
+  }
+  /* دسته جوی‌استیک */
+  #joystick-knob {
+    position: absolute; top: 45px; left: 45px; width: 60px; height: 60px;
+    background: rgba(255, 255, 255, 0.3); border: 2px solid rgba(255,255,255,0.6); border-radius: 50%;
+    box-shadow: 0 0 15px rgba(255,255,255,0.2);
+  }
+
+  #crosshair { 
+    position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; 
+    transform: translate(-50%, -50%); border: 2px solid rgba(255, 255, 255, 0.8); 
+    border-radius: 50%; z-index: 5; pointer-events: none; 
+  }
+  #info { position: absolute; top: 20px; width: 100%; text-align: center; color: #0ff; font-weight: bold; font-size: 20px; text-shadow: 0 0 10px #0ff; z-index: 10; pointer-events: none; }
 </style>
 </head>
 <body>
 
-<div id="info">پایگاه فضایی - امتیاز: 0</div>
+<div id="info">پایگاه فضایی</div>
 <div id="crosshair"></div>
 
 <div id="joystick-zone"><div id="joystick-knob"></div></div>
-<button class="glass-btn" id="btn-jump">JUMP</button>
-<button class="glass-btn" id="btn-fire">FIRE</button>
+<button id="btn-fire">FIRE</button>
 
 <script type="importmap">
 {
@@ -57,40 +61,57 @@
 <script type="module">
 import * as THREE from 'three';
 
-// 1. راه‌اندازی صحنه
+// ================= 1. سیستم صدا (Web Audio) =================
+let audioCtx = null;
+function initAudio() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+}
+function playShootSound() {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = 'square'; // صدای تیز
+  osc.frequency.setValueAtTime(800, audioCtx.currentTime); // فرکانس بالا
+  osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1); // افت سریع
+  gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+  
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + 0.1);
+}
+
+// ================= 2. راه‌اندازی صحنه =================
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x0a0a1a); 
-scene.fog = new THREE.Fog(0x0a0a1a, 20, 100);
+scene.fog = new THREE.Fog(0x0a0a1a, 10, 100);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
 document.body.appendChild(renderer.domElement);
 
-// 2. نورپردازی
-scene.add(new THREE.AmbientLight(0xffffff, 0.4)); 
-const dirLight = new THREE.DirectionalLight(0xaaccff, 1.5); 
-dirLight.position.set(50, 100, 50);
-dirLight.castShadow = true;
+// نورپردازی
+scene.add(new THREE.AmbientLight(0xffffff, 1.2)); // نور محیط بیشتر
+const dirLight = new THREE.DirectionalLight(0xaaccff, 2); 
+dirLight.position.set(10, 20, 10);
 scene.add(dirLight);
-const pointLight = new THREE.PointLight(0x00ffff, 2, 50);
-pointLight.position.set(0, 10, 0);
-scene.add(pointLight);
 
-// 3. ساخت زمین
+// زمین
 const groundGeo = new THREE.PlaneGeometry(200, 200);
 const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1a2a, roughness: 0.2, metalness: 0.8 });
 const ground = new THREE.Mesh(groundGeo, groundMat);
 ground.rotation.x = -Math.PI / 2;
-ground.receiveShadow = true;
 scene.add(ground);
 
 const gridHelper = new THREE.GridHelper(200, 40, 0x00ffff, 0x004444);
 gridHelper.position.y = 0.1;
 scene.add(gridHelper);
 
-// 4. ساخت پایگاه
+// ساختمون‌ها
 const buildingMat = new THREE.MeshStandardMaterial({ color: 0x555566, metalness: 0.9, roughness: 0.4 });
 const neonMat = new THREE.MeshBasicMaterial({ color: 0xff00ff }); 
 
@@ -98,68 +119,80 @@ function createBuilding(x, z, w, h, d) {
   const bGeo = new THREE.BoxGeometry(w, h, d);
   const building = new THREE.Mesh(bGeo, buildingMat);
   building.position.set(x, h/2, z);
-  building.castShadow = true;
-  building.receiveShadow = true;
   scene.add(building);
-
   const nGeo = new THREE.BoxGeometry(w + 0.1, 1, d + 0.1);
   const neon = new THREE.Mesh(nGeo, neonMat);
   neon.position.set(x, h - 2, z);
   scene.add(neon);
 }
 
-createBuilding(-20, -20, 15, 30, 15);
-createBuilding(20, -30, 20, 40, 20);
-createBuilding(-30, 20, 25, 20, 25);
-createBuilding(30, 10, 10, 50, 10);
-createBuilding(0, -40, 10, 60, 10);
+createBuilding(-10, -15, 10, 20, 10);
+createBuilding(15, -20, 15, 30, 15);
+createBuilding(-20, 10, 12, 25, 12);
+createBuilding(20, 15, 10, 40, 10);
 
-// 5. متغیرهای بازیکن
-let playerPos = new THREE.Vector3(0, 2, 20); 
+// ================= 3. متغیرهای بازیکن =================
+let playerPos = new THREE.Vector3(0, 1.6, 15); // قد 1.6
 let playerYaw = 0;
 let playerPitch = 0;
 let moveForward = 0, moveRight = 0;
-let velocityY = 0;
-let isGrounded = true;
 let isFiring = false, fireCooldown = 0, bullets = [];
-let score = 0;
 
-// 6. جوی‌استیک
+// ================= 4. سیستم جوی‌استیک لمسی =================
 const joyZone = document.getElementById('joystick-zone');
 const joyKnob = document.getElementById('joystick-knob');
-let joyActive = false, joyCenterX = 0, joyCenterY = 0, joyMaxDist = 40;
+let joyActive = false, joyCenterX = 0, joyCenterY = 0, joyMaxDist = 50;
 
 joyZone.addEventListener('touchstart', (e) => {
-  e.preventDefault(); joyActive = true;
+  e.preventDefault(); 
+  initAudio(); // فعال کردن صدا با اولین لمس
+  joyActive = true;
   const rect = joyZone.getBoundingClientRect();
   joyCenterX = rect.left + rect.width / 2;
   joyCenterY = rect.top + rect.height / 2;
 }, {passive: false});
 
 document.addEventListener('touchmove', (e) => {
+  // اگر در حال استفاده از جوی‌استیک هستیم
   if (joyActive) {
     e.preventDefault();
-    let dx = e.touches[0].clientX - joyCenterX;
-    let dy = e.touches[0].clientY - joyCenterY;
+    let touch = e.touches[0];
+    let dx = touch.clientX - joyCenterX;
+    let dy = touch.clientY - joyCenterY;
     let dist = Math.sqrt(dx*dx + dy*dy);
-    if (dist > joyMaxDist) { dx = (dx / dist) * joyMaxDist; dy = (dy / dist) * joyMaxDist; }
+    
+    // محدود کردن دسته به داخل دایره
+    if (dist > joyMaxDist) { 
+      dx = (dx / dist) * joyMaxDist; 
+      dy = (dy / dist) * joyMaxDist; 
+    }
+    
+    // حرکت دادن دسته
     joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+    
+    // محاسبه شدت حرکت
     moveRight = dx / joyMaxDist;
     moveForward = -dy / joyMaxDist;
-  } else if (e.target.tagName !== 'BUTTON') {
-    let touchX = e.touches[0].clientX;
-    let touchY = e.touches[0].clientY;
-    playerYaw -= (touchX - lastTouchX) * 0.005;
-    playerPitch -= (touchY - lastTouchY) * 0.005;
+  } 
+  // اگر در حال چرخش دوربین هستیم (بیرون از جوی‌استیک)
+  else if (e.target.tagName !== 'BUTTON' && !joyActive) {
+    let dx = e.touches[0].clientX - lastTouchX;
+    let dy = e.touches[0].clientY - lastTouchY;
+    
+    playerYaw -= dx * 0.005;
+    playerPitch -= dy * 0.005;
     playerPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, playerPitch));
-    lastTouchX = touchX; lastTouchY = touchY;
+    
+    lastTouchX = e.touches[0].clientX; 
+    lastTouchY = e.touches[0].clientY;
   }
 }, {passive: false});
 
 let lastTouchX = 0, lastTouchY = 0;
 document.addEventListener('touchstart', (e) => {
-  if (e.target.tagName !== 'BUTTON' && !joyActive) {
-    lastTouchX = e.touches[0].clientX; lastTouchY = e.touches[0].clientY;
+  if (e.target.tagName !== 'BUTTON' && e.target.id !== 'joystick-zone' && e.target.id !== 'joystick-knob') {
+    lastTouchX = e.touches[0].clientX; 
+    lastTouchY = e.touches[0].clientY;
   }
 });
 
@@ -167,22 +200,24 @@ document.addEventListener('touchend', (e) => {
   if (joyActive) {
     joyActive = false;
     joyKnob.style.transform = 'translate(0px, 0px)';
-    moveForward = 0; moveRight = 0;
+    moveForward = 0; 
+    moveRight = 0;
   }
 });
 
-// 7. دکمه‌ها
-document.getElementById('btn-fire').addEventListener('touchstart', (e) => { e.preventDefault(); isFiring = true; }, {passive: false});
-document.getElementById('btn-fire').addEventListener('touchend', (e) => { e.preventDefault(); isFiring = false; }, {passive: false});
-
-document.getElementById('btn-jump').addEventListener('touchstart', (e) => {
-  e.preventDefault();
-  if (isGrounded) { velocityY = 0.4; isGrounded = false; }
+// ================= 5. دکمه شلیک =================
+document.getElementById('btn-fire').addEventListener('touchstart', (e) => {
+  e.preventDefault(); 
+  isFiring = true;
+}, {passive: false});
+document.getElementById('btn-fire').addEventListener('touchend', (e) => {
+  e.preventDefault(); 
+  isFiring = false;
 }, {passive: false});
 
-// 8. تیراندازی
+// ================= 6. گلوله =================
 function shootBullet() {
-  const bGeo = new THREE.SphereGeometry(0.2, 4, 4);
+  const bGeo = new THREE.SphereGeometry(0.1, 4, 4);
   const bMat = new THREE.MeshBasicMaterial({ color: 0x00ffff }); 
   const bullet = new THREE.Mesh(bGeo, bMat);
   
@@ -191,49 +226,55 @@ function shootBullet() {
   startPos.add(dir.multiplyScalar(1));
   
   bullet.position.copy(startPos);
-  bullet.userData = { velocity: dir.multiplyScalar(3), life: 50 };
+  bullet.userData = { velocity: dir.multiplyScalar(1.5), life: 100 };
+  
   scene.add(bullet);
   bullets.push(bullet);
   
-  pointLight.position.copy(startPos);
-  pointLight.intensity = 5;
+  // افکت نور
+  const flashLight = new THREE.PointLight(0x00ffff, 2, 5);
+  flashLight.position.copy(startPos);
+  scene.add(flashLight);
+  setTimeout(() => scene.remove(flashLight), 50);
 }
 
-// 9. حلقه بازی
+// ================= 7. حلقه بازی =================
 function animate() {
   requestAnimationFrame(animate);
 
-  const moveSpeed = 0.3;
+  // حرکت بازیکن با جوی‌استیک
+  const moveSpeed = 0.15; // سرعت راه رفتن
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-  forward.y = 0; forward.normalize();
+  forward.y = 0; forward.normalize(); // حرکت فقط افقی
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
   right.y = 0; right.normalize();
 
   playerPos.add(forward.multiplyScalar(moveForward * moveSpeed));
   playerPos.add(right.multiplyScalar(moveRight * moveSpeed));
 
-  playerPos.y += velocityY;
-  if (playerPos.y > 2) { velocityY -= 0.02; } 
-  if (playerPos.y <= 2) { playerPos.y = 2; velocityY = 0; isGrounded = true; }
-
+  // اعمال دوربین
   camera.position.copy(playerPos);
   camera.rotation.set(playerPitch, playerYaw, 0, 'YXZ');
 
+  // شلیک
   if (isFiring) {
     fireCooldown--;
     if (fireCooldown <= 0) {
       shootBullet();
-      fireCooldown = 10;
+      playShootSound(); // پخش صدا
+      fireCooldown = 10; // سرعت رگبار
     }
   }
 
-  pointLight.intensity *= 0.9;
-
+  // آپدیت گلوله‌ها
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i];
     b.position.add(b.userData.velocity);
     b.userData.life--;
-    if (b.userData.life <= 0) { scene.remove(b); bullets.splice(i, 1); }
+    if (b.userData.life <= 0) { 
+      scene.remove(b); 
+      bullets.splice(i, 1); 
+    }
   }
 
   renderer.render(scene, camera);
