@@ -1,56 +1,27 @@
-body { 
-  margin: 0; 
-  overflow: hidden; 
-  background: #000; 
-  font-family: Tahoma; 
-}
-
-canvas { 
-  display: block; 
-}
-
-#ui {
-  position: absolute; 
-  bottom: 20px; 
-  width: 100%; 
-  display: flex; 
-  justify-content: space-between; 
-  padding: 0 20px; 
-  box-sizing: border-box;
-  z-index: 10;
-}
-
-.btn {
-  width: 80px; 
-  height: 80px; 
-  border-radius: 50%; 
-  border: 2px solid #fff; 
-  font-size: 14px; 
-  font-weight: bold; 
-  color: #fff; 
-  opacity: 0.8;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-  touch-action: none;
-}
-
-#btn-switch { 
-  background: rgba(255, 165, 0, 0.6); 
-}
+body { margin: 0; overflow: hidden; background: #87CEEB; font-family: Tahoma; touch-action: none; }
+canvas { display: block; }
 
 #btn-fire { 
-  background: rgba(255, 0, 0, 0.6); 
+  position: absolute; bottom: 40px; right: 30px; width: 90px; height: 90px; 
+  border-radius: 50%; border: 3px solid rgba(255, 80, 80, 0.8);
+  background: rgba(255, 0, 0, 0.2); backdrop-filter: blur(5px);
+  color: #fff; font-weight: bold; font-size: 18px;
+  display: flex; justify-content: center; align-items: center;
+  z-index: 10; box-shadow: 0 0 20px rgba(255,0,0,0.4);
+  touch-action: none; transition: transform 0.1s;
+}
+#btn-fire:active { background: rgba(255, 0, 0, 0.6); transform: scale(0.95); }
+
+#joystick-zone {
+  position: absolute; bottom: 20px; left: 20px; width: 150px; height: 150px;
+  z-index: 10; touch-action: none;
+  background: rgba(255, 255, 255, 0.15); border: 2px solid rgba(255,255,255,0.4); border-radius: 50%;
+}
+#joystick-knob {
+  position: absolute; top: 45px; left: 45px; width: 60px; height: 60px;
+  background: rgba(255, 255, 255, 0.6); border: 2px solid rgba(255,255,255,0.8); border-radius: 50%;
+  box-shadow: 0 0 15px rgba(0,0,0,0.2);
 }
 
-#info {
-  position: absolute; 
-  top: 20px; 
-  width: 100%; 
-  text-align: center; 
-  color: #fff; 
-  font-size: 20px; 
-  pointer-events: none;
-  z-index: 10;
-}
+#crosshair { position: absolute; top: 50%; left: 50%; width: 20px; height: 20px; transform: translate(-50%, -50%); border: 2px solid rgba(255, 255, 255, 0.9); border-radius: 50%; z-index: 5; pointer-events: none; }
+#info { position: absolute; top: 20px; width: 100%; text-align: center; color: #fff; font-weight: bold; font-size: 20px; text-shadow: 1px 1px 4px #000; z-index: 10; pointer-events: none; }
