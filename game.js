@@ -1,108 +1,84 @@
 import * as THREE from 'three';
 import { initAudio, playShootSound } from './audio.js';
 
-// ================= 1. تنظیمات صحنه =================
+// ================= 1. تنظیمات صحنه (شب ترسناک) =================
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87CEEB); 
-scene.fog = new THREE.Fog(0x87CEEB, 200, 800); // مه دور برای دیدن شهر بزرگ
+scene.background = new THREE.Color(0x050510); // تاریکی مطلق
+scene.fog = new THREE.FogExp2(0x050510, 0.02); // مه غلیظ و تاریک
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
-// ================= 2. نورپردازی =================
-scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.2));
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-dirLight.position.set(100, 200, 100); 
-dirLight.castShadow = true;
-scene.add(dirLight);
+// ================= 2. نورپردازی (ماه و چراغ قوه) =================
+// نور ماه (خیلی کم)
+const moonLight = new THREE.DirectionalLight(0x8899ff, 0.5); 
+moonLight.position.set(100, 200, -100);
+moonLight.castShadow = true;
+scene.add(moonLight);
 
-// ================= 3. زمین =================
+// چراغ‌قوه (نوری که همراه بازیکنه)
+const flashlight = new THREE.SpotLight(0xffffff, 2, 50, Math.PI/6, 0.5, 1);
+flashlight.position.set(0, 0, 0);
+scene.add(flashlight);
+scene.add(flashlight.target);
+
+// ================= 3. ماه توی آسمون =================
+const moonGeo = new THREE.SphereGeometry(20, 32, 32);
+const moonMat = new THREE.MeshBasicMaterial({ color: 0xeeeeff });
+const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+moonMesh.position.set(100, 150, -300);
+scene.add(moonMesh);
+
+// ================= 4. زمین (خاکی) =================
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(1000, 1000), 
-  new THREE.MeshStandardMaterial({ color: 0x222222 }) // زمین خاکستری
+  new THREE.PlaneGeometry(500, 500), 
+  new THREE.MeshStandardMaterial({ color: 0x1a1a1a }) 
 );
 ground.rotation.x = -Math.PI / 2; 
 ground.receiveShadow = true;
 scene.add(ground);
 
-// ================= 4. ساخت شهر (شبکه خیابان‌ها) =================
+// ================= 5. ساخت روستای متروکه =================
 const obstacles = [];
-const buildingMat = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 0.8 });
+const houseMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
 
-function createBuilding(x, z, w, h, d) {
-  const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), buildingMat);
-  b.position.set(x, h/2, z); 
-  b.castShadow = true; b.receiveShadow = true;
-  scene.add(b);
+function createHouse(x, z, w, h, d) {
+  const house = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), houseMat);
+  house.position.set(x, h/2, z); 
+  house.castShadow = true; house.receiveShadow = true;
+  scene.add(house);
   obstacles.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2, maxZ: z + d/2 });
 }
 
-// ساخت بلوک‌های شهری (چیدمان شطرنجی مثل نیویورک)
-const blockSize = 20;
-const roadWidth = 10;
-for (let x = -200; x <= 200; x += blockSize + roadWidth) {
-  for (let z = -200; z <= 200; z += blockSize + roadWidth) {
-    // فقط جاهایی که جاده نیست ساختمون بساز
-    const bWidth = 15 + Math.random() * 10;
-    const bHeight = 20 + Math.random() * 60;
-    const bDepth = 15 + Math.random() * 10;
-    createBuilding(x + blockSize/2, z + blockSize/2, bWidth, bHeight, bDepth);
-  }
+// چیدن چند خونه متروکه
+createHouse(-20, -30, 10, 15, 10);
+createHouse(25, -40, 15, 20, 15);
+createHouse(-40, 20, 12, 18, 12);
+createHouse(30, 25, 10, 12, 10);
+
+// ================= 6. دشمن‌ها (جن) =================
+let enemies = [];
+const enemyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }); // سفید و شبح وار
+const enemyGeo = new THREE.BoxGeometry(1, 2, 1);
+
+function spawnEnemy() {
+  const enemy = new THREE.Mesh(enemyGeo, enemyMat);
+  let x = (Math.random() - 0.5) * 100;
+  let z = (Math.random() - 0.5) * 100;
+  if (Math.abs(x) < 10 && Math.abs(z) < 10) { x += 30; z += 30; }
+  enemy.position.set(x, 1, z);
+  scene.add(enemy);
+  enemies.push(enemy);
 }
 
-// ================= 5. ساخت جاده‌ها =================
-const roadMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
-const lineMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-
-// جاده‌های افقی
-for (let z = -200; z <= 200; z += blockSize + roadWidth) {
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(500, roadWidth), roadMat);
-  road.rotation.x = -Math.PI / 2;
-  road.position.set(0, 0.01, z);
-  road.receiveShadow = true;
-  scene.add(road);
-  
-  // خط‌کشی
-  for (let x = -240; x < 240; x += 20) {
-    const line = new THREE.Mesh(new THREE.PlaneGeometry(10, 0.5), lineMat);
-    line.rotation.x = -Math.PI / 2;
-    line.position.set(x, 0.02, z);
-    scene.add(line);
-  }
-}
-
-// جاده‌های عمودی
-for (let x = -200; x <= 200; x += blockSize + roadWidth) {
-  const road = new THREE.Mesh(new THREE.PlaneGeometry(roadWidth, 500), roadMat);
-  road.rotation.x = -Math.PI / 2;
-  road.position.set(x, 0.01, 0);
-  road.receiveShadow = true;
-  scene.add(road);
-}
-
-// ================= 6. مینی‌مپ (نقشه کوچیک) =================
-const mapCanvas = document.createElement('canvas');
-mapCanvas.width = 150; mapCanvas.height = 150;
-const mapCtx = mapCanvas.getContext('2d');
-const mapElement = document.createElement('img');
-mapElement.src = mapCanvas.toDataURL();
-mapElement.style.position = 'absolute';
-mapElement.style.top = '10px';
-mapElement.style.right = '10px';
-mapElement.style.width = '150px';
-mapElement.style.height = '150px';
-mapElement.style.borderRadius = '50%';
-mapElement.style.border = '3px solid rgba(255,255,255,0.5)';
-mapElement.style.zIndex = '100';
-document.body.appendChild(mapElement);
+for (let i = 0; i < 4; i++) spawnEnemy();
 
 // ================= 7. بازیکن =================
-let playerPos = new THREE.Vector3(0, 1.6, 30); 
+let playerPos = new THREE.Vector3(0, 1.6, 20); 
 let playerYaw = 0, playerPitch = 0;
 let moveForward = 0, moveRight = 0;
 let isFiring = false, fireCooldown = 0;
@@ -176,15 +152,24 @@ function shootBullet() {
   scene.add(b); bullets.push(b);
 
   raycaster.set(camera.position, dir);
-  const intersects = raycaster.intersectObjects([ground, ...obstacles.map(o => o.mesh)], true);
+  const intersects = raycaster.intersectObjects([ground, ...obstacles.map(o => o.mesh), ...enemies], true);
 
   if (intersects.length > 0) {
     const hit = intersects[0];
-    const decal = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
-    decal.position.copy(hit.point);
-    decal.lookAt(hit.point.clone().add(hit.face.normal));
-    scene.add(decal);
-    decals.push({ mesh: decal, timeCreated: performance.now() });
+    
+    // اگه به جن خورد
+    if (enemies.includes(hit.object)) {
+      scene.remove(hit.object);
+      enemies.splice(enemies.indexOf(hit.object), 1);
+    } 
+    // اگه به دیوار خورد
+    else if (hit.object.material === houseMat || hit.object === ground) {
+      const decal = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
+      decal.position.copy(hit.point);
+      decal.lookAt(hit.point.clone().add(hit.face.normal));
+      scene.add(decal);
+      decals.push({ mesh: decal, timeCreated: performance.now() });
+    }
   }
 }
 
@@ -201,7 +186,17 @@ function checkCollision(newX, newZ) {
 function animate() {
   requestAnimationFrame(animate);
 
-  const moveSpeed = 0.3;
+  // حرکت جنی‌ها به سمت بازیکن
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    let enemy = enemies[i];
+    let dir = new THREE.Vector3().subVectors(playerPos, enemy.position).normalize();
+    enemy.position.add(dir.multiplyScalar(0.05)); // سرعت کم و ترسناک
+    enemy.lookAt(playerPos.x, enemy.position.y, playerPos.z);
+  }
+
+  if (enemies.length < 4 && Math.random() < 0.01) spawnEnemy();
+
+  const moveSpeed = 0.25;
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); forward.y = 0; forward.normalize();
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
   
@@ -213,6 +208,11 @@ function animate() {
   
   camera.position.copy(playerPos); 
   camera.rotation.set(playerPitch, playerYaw, 0, 'YXZ');
+
+  // چراغ قوه همراه دوربین
+  flashlight.position.copy(camera.position);
+  flashlight.target.position.copy(camera.position).add(forward);
+  flashlight.target.updateMatrixWorld();
 
   if (isFiring) { 
     fireCooldown--; 
