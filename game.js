@@ -11,7 +11,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap; // سایه‌های نرم
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 // ================= 2. نورپردازی =================
@@ -23,22 +23,22 @@ dirLight.shadow.mapSize.width = 2048;
 dirLight.shadow.mapSize.height = 2048;
 scene.add(dirLight);
 
-// ================= 3. زمین (چمن با بافت) =================
-// ساخت یه بافت چمن با کد (شبیه نویز)
+// ================= 3. زمین (چمن با کد) =================
+// ساخت یه بافت چمن مصنوعی با کد (بدون نیاز به عکس)
 const canvas = document.createElement('canvas');
 canvas.width = 512; canvas.height = 512;
 const ctx = canvas.getContext('2d');
 ctx.fillStyle = '#2d6a2d'; // رنگ پایه چمن
 ctx.fillRect(0, 0, 512, 512);
-// اضافه کردن لکه‌های سبز تیره و روشن برای واقعی تر شدن
-for (let i = 0; i < 5000; i++) {
+// اضافه کردن هزاران نقطه ریز برای شبیه شدن به چمن
+for (let i = 0; i < 20000; i++) {
   ctx.fillStyle = Math.random() > 0.5 ? '#1f4f1f' : '#3a8a3a';
   ctx.fillRect(Math.random() * 512, Math.random() * 512, 2, 2);
 }
 const grassTexture = new THREE.CanvasTexture(canvas);
 grassTexture.wrapS = THREE.RepeatWrapping;
 grassTexture.wrapT = THREE.RepeatWrapping;
-grassTexture.repeat.set(50, 50); // تکرار بافت روی کل زمین
+grassTexture.repeat.set(50, 50); // تکرار روی زمین
 
 const ground = new THREE.Mesh(
   new THREE.PlaneGeometry(500, 500), 
@@ -48,32 +48,20 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-// ================= 4. جاده (آسفالت با بافت و کناره) =================
-const roadMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 }); // آسفالت تیره
+// ================= 4. جاده =================
+const roadMat = new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.8 }); 
 const road = new THREE.Mesh(new THREE.PlaneGeometry(40, 500), roadMat);
 road.rotation.x = -Math.PI / 2;
 road.position.set(0, 0.01, 0);
 road.receiveShadow = true;
 scene.add(road);
 
-// نوار خاکی کناره‌های جاده (برای اینکه جاده از چمن جدا بشه)
-const dirtMat = new THREE.MeshStandardMaterial({ color: 0x4a3b2a });
-const dirtLeft = new THREE.Mesh(new THREE.PlaneGeometry(2, 500), dirtMat);
-dirtLeft.rotation.x = -Math.PI / 2;
-dirtLeft.position.set(-21, 0.02, 0);
-scene.add(dirtLeft);
-
-const dirtRight = new THREE.Mesh(new THREE.PlaneGeometry(2, 500), dirtMat);
-dirtRight.rotation.x = -Math.PI / 2;
-dirtRight.position.set(21, 0.02, 0);
-scene.add(dirtRight);
-
-// خط‌کشی وسط جاده
+// خط‌کشی
 const lineMat = new THREE.MeshBasicMaterial({ color: 0xffcc00 });
 for (let i = -240; i < 240; i += 20) {
   const line = new THREE.Mesh(new THREE.PlaneGeometry(1, 10), lineMat);
   line.rotation.x = -Math.PI / 2;
-  line.position.set(0, 0.03, i);
+  line.position.set(0, 0.02, i);
   scene.add(line);
 }
 
@@ -81,16 +69,13 @@ for (let i = -240; i < 240; i += 20) {
 const cars = [];
 function createCar(color, startX, startZ, direction) {
   const carGroup = new THREE.Group();
-  
   const bodyMat = new THREE.MeshStandardMaterial({ color: color, metalness: 0.6, roughness: 0.3 });
   const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1, 4), bodyMat);
-  body.position.y = 0.5; 
-  body.castShadow = true;
+  body.position.y = 0.5; body.castShadow = true;
   carGroup.add(body);
   
   const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.8, 2), new THREE.MeshStandardMaterial({ color: 0x111111 }));
-  cabin.position.set(0, 1.4, -0.5); 
-  cabin.castShadow = true;
+  cabin.position.set(0, 1.4, -0.5); cabin.castShadow = true;
   carGroup.add(cabin);
 
   if (direction === 'north') carGroup.rotation.y = 0;
@@ -110,8 +95,7 @@ let playerPos = new THREE.Vector3(0, 1.6, 30);
 let playerYaw = 0, playerPitch = 0;
 let moveForward = 0, moveRight = 0;
 let isFiring = false, fireCooldown = 0;
-let bullets = [];
-let decals = [];
+let bullets = [], decals = [];
 const playerRadius = 0.5; 
 
 // ================= 7. کنترل‌ها =================
@@ -132,15 +116,9 @@ document.addEventListener('touchstart', (e) => {
   e.preventDefault(); initAudio();
   for (let i = 0; i < e.changedTouches.length; i++) {
     const touch = e.changedTouches[i];
-    if (touch.target === joyZone || touch.target === joyKnob) {
-      joyTouchId = touch.identifier; updateJoyCenter();
-    } else if (touch.target === btnFire) {
-      isFiring = true;
-    } else {
-      if (cameraTouchId === null) {
-        cameraTouchId = touch.identifier; lastTouchX = touch.clientX; lastTouchY = touch.clientY;
-      }
-    }
+    if (touch.target === joyZone || touch.target === joyKnob) { joyTouchId = touch.identifier; updateJoyCenter(); } 
+    else if (touch.target === btnFire) { isFiring = true; } 
+    else if (cameraTouchId === null) { cameraTouchId = touch.identifier; lastTouchX = touch.clientX; lastTouchY = touch.clientY; }
   }
 }, {passive: false});
 
@@ -191,8 +169,7 @@ function shootBullet() {
 
   if (intersects.length > 0) {
     const hit = intersects[0];
-    const decalMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false });
-    const decal = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), decalMat);
+    const decal = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
     decal.position.copy(hit.point);
     decal.lookAt(hit.point.clone().add(hit.face.normal));
     scene.add(decal);
@@ -205,32 +182,20 @@ function animate() {
   requestAnimationFrame(animate);
 
   cars.forEach(car => {
-    if (car.direction === 'north') {
-      car.mesh.position.z -= car.speed;
-      if (car.mesh.position.z < -250) car.mesh.position.z = 250;
-    } else {
-      car.mesh.position.z += car.speed;
-      if (car.mesh.position.z > 250) car.mesh.position.z = -250;
-    }
+    if (car.direction === 'north') { car.mesh.position.z -= car.speed; if (car.mesh.position.z < -250) car.mesh.position.z = 250; }
+    else { car.mesh.position.z += car.speed; if (car.mesh.position.z > 250) car.mesh.position.z = -250; }
   });
 
   const moveSpeed = 0.25;
   const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); forward.y = 0; forward.normalize();
   const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
-  
-  let moveX = (forward.x * moveForward + right.x * moveRight) * moveSpeed;
-  let moveZ = (forward.z * moveForward + right.z * moveRight) * moveSpeed;
-  
-  playerPos.x += moveX;
-  playerPos.z += moveZ;
+  playerPos.x += (forward.x * moveForward + right.x * moveRight) * moveSpeed;
+  playerPos.z += (forward.z * moveForward + right.z * moveRight) * moveSpeed;
   
   camera.position.copy(playerPos); 
   camera.rotation.set(playerPitch, playerYaw, 0, 'YXZ');
 
-  if (isFiring) { 
-    fireCooldown--; 
-    if (fireCooldown <= 0) { shootBullet(); playShootSound(); fireCooldown = 10; } 
-  }
+  if (isFiring) { fireCooldown--; if (fireCooldown <= 0) { shootBullet(); playShootSound(); fireCooldown = 10; } }
 
   for (let i = bullets.length - 1; i >= 0; i--) {
     const b = bullets[i]; b.position.add(b.userData.velocity); b.userData.life--;
@@ -239,9 +204,7 @@ function animate() {
 
   const currentTime = performance.now();
   for (let i = decals.length - 1; i >= 0; i--) {
-    if (currentTime - decals[i].timeCreated > 40000) {
-      scene.remove(decals[i].mesh); decals.splice(i, 1);
-    }
+    if (currentTime - decals[i].timeCreated > 40000) { scene.remove(decals[i].mesh); decals.splice(i, 1); }
   }
   
   renderer.render(scene, camera);
