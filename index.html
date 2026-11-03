@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bikini Bottom FPS - Houses</title>
+<title>Bikini Bottom FPS - Textured</title>
 <style>
   body { margin: 0; overflow: hidden; background: #000; }
   canvas { display: block; }
@@ -26,32 +26,70 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// --- نقشه بیکینی باتم (۱ = دیوار، ۰ = فضای خالی/در، ۲ = جنگل، ۳ = آناناس، ۴ = خونه اختاپوس) ---
+// --- ساخت تکسچرها (بافت خونه‌ها) با کد ---
+// تکسچر 1: آجر (برای رستوران/دیوار)
+const tex1 = document.createElement('canvas'); tex1.width = 64; tex1.height = 64;
+const t1 = tex1.getContext('2d');
+t1.fillStyle = '#8b4513'; t1.fillRect(0,0,64,64);
+t1.strokeStyle = '#5d4037'; t1.lineWidth = 2;
+for(let i=0; i<64; i+=16) { t1.beginPath(); t1.moveTo(0,i); t1.lineTo(64,i); t1.stroke(); }
+for(let i=0; i<64; i+=32) { t1.beginPath(); t1.moveTo(i,0); t1.lineTo(i,64); t1.stroke(); }
+
+// تکسچر 2: برگ (برای جنگل)
+const tex2 = document.createElement('canvas'); tex2.width = 64; tex2.height = 64;
+const t2 = tex2.getContext('2d');
+t2.fillStyle = '#2e7d32'; t2.fillRect(0,0,64,64);
+t2.fillStyle = '#4caf50';
+for(let i=0; i<20; i++) { t2.fillRect(Math.random()*64, Math.random()*64, 8, 8); }
+
+// تکسچر 3: آناناس (زرد با خطوط)
+const tex3 = document.createElement('canvas'); tex3.width = 64; tex3.height = 64;
+const t3 = tex3.getContext('2d');
+t3.fillStyle = '#ffaa00'; t3.fillRect(0,0,64,64);
+t3.strokeStyle = '#cc8800'; t3.lineWidth = 3;
+for(let i=0; i<64; i+=16) {
+    t3.beginPath(); t3.moveTo(i,0); t3.lineTo(i,64); t3.stroke();
+    t3.beginPath(); t3.moveTo(0,i); t3.lineTo(64,i); t3.stroke();
+}
+
+// تکسچر 4: خونه اختاپوس (خاکستری با پنجره)
+const tex4 = document.createElement('canvas'); tex4.width = 64; tex4.height = 64;
+const t4 = tex4.getContext('2d');
+t4.fillStyle = '#888888'; t4.fillRect(0,0,64,64);
+t4.fillStyle = '#333333'; 
+t4.fillRect(15, 15, 15, 20); t4.fillRect(35, 15, 15, 20); // پنجره‌ها
+t4.fillStyle = '#555'; t4.fillRect(0, 50, 64, 14); // کف
+
+// آرایه تکسچرها
+const textures = [null, tex1, tex2, tex3, tex4];
+
+
+// --- نقشه بیکینی باتم (۱=آجر، ۲=جنگل، ۳=آناناس، ۴=اختاپوس) ---
 const map = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // آناناس (خونه باب اسفنجی)
+  [1,0,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,3,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,3,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,3,3,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // در ورودی آناناس
+  [1,0,3,3,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,1], // خونه اختاپوس
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,4,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,4,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,4,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,0,4,0,0,0,0,0,1], // در ورودی اختاپوس
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,0,4,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1], // جنگل
+  [1,0,0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,2,2,2,2,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
-let posX = 4.5, posY = 8.5; // شروع در مرکز شهر
+let posX = 4.5, posY = 8.5;
 let dirX = -1.0, dirY = 0.0;
 let planeX = 0.0, planeY = 0.66;
 
@@ -103,11 +141,8 @@ function update() {
 }
 
 function draw() {
-  // آسمون
   ctx.fillStyle = '#87CEEB';
   ctx.fillRect(0, 0, W, H / 2);
-  
-  // زمین شنی
   ctx.fillStyle = '#e6d5a8';
   ctx.fillRect(0, H / 2, W, H / 2);
 
@@ -140,16 +175,22 @@ function draw() {
     let drawEnd = lineHeight / 2 + H / 2;
     if (drawEnd >= H) drawEnd = H - 1;
 
-    // رنگ دیوارها بر اساس نوع ساختمون
-    let color;
+    // رسم دیوار با تکسچر
     const tile = map[mapY][mapX];
-    if (tile === 1) color = side === 1 ? '#8b4513' : '#a0522d'; // دیوارهای دور شهر
-    else if (tile === 2) color = side === 1 ? '#2e7d32' : '#4caf50'; // جنگل
-    else if (tile === 3) color = side === 1 ? '#ffaa00' : '#ffcc00'; // آناناس
-    else if (tile === 4) color = side === 1 ? '#888888' : '#aaaaaa'; // خونه اختاپوس
+    const tex = textures[tile];
+    
+    // محاسبه مختصات برخورد برای تکسچر
+    let wallX; 
+    if (side === 0) wallX = posY + perpWallDist * rayDirY;
+    else wallX = posX + perpWallDist * rayDirX;
+    wallX -= Math.floor(wallX);
 
-    ctx.fillStyle = color;
-    ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+    let texX = Math.floor(wallX * tex.width);
+    if(side === 0 && rayDirX > 0) texX = tex.width - texX - 1;
+    if(side === 1 && rayDirY < 0) texX = tex.width - texX - 1;
+
+    // کشیدن ستون تکسچر روی دیوار
+    ctx.drawImage(tex, texX, 0, 1, tex.height, x, drawStart, 1, drawEnd - drawStart);
   }
 }
 
