@@ -80,10 +80,9 @@ const map = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
-// تنظیمات اولیه بازیکن
-let posX = 4.5, posY = 9.5; // وسط جاده
-let dirX = 1.0, dirY = 0.0; // جهت به سمت جلو (شرق)
-let planeX = 0.0, planeY = 0.66; // میدان دید
+  // مختصات جدید (وسط یه خیابون باز و خالی)
+let posX = 3.5, posY = 8.5; 
+let dirX = 0.0, dirY = 1.0; // رو به پایین (جنوب)
 
 const keys = { w: false, a: false, s: false, d: false };
 window.addEventListener('keydown', (e) => {
