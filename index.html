@@ -3,27 +3,28 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Bikini Bottom 2D</title>
+<title>Bikini Bottom</title>
 <style>
-  body { margin: 0; overflow: hidden; background: #87CEEB; font-family: Tahoma; touch-action: none; }
+  body { margin: 0; overflow: hidden; background: #000; font-family: Tahoma; }
   canvas { display: block; }
-  #ui { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 10; pointer-events: none; }
-  .btn { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #fff; font-size: 16px; font-weight: bold; color: #fff; display: flex; justify-content: center; align-items: center; pointer-events: auto; background: rgba(255,255,255,0.2); }
-  #info { position: absolute; top: 20px; width: 100%; text-align: center; color: #fff; font-size: 20px; text-shadow: 2px 2px 4px #000; z-index: 10; pointer-events: none; }
+  #ui { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #fff; font-size: 18px; z-index: 10; text-shadow: 1px 1px 3px #000; }
+  #interact-btn { 
+    position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+    padding: 15px 30px; font-size: 20px; background: #ffcc00; border: none; border-radius: 10px;
+    cursor: pointer; font-weight: bold; display: none; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  }
 </style>
 </head>
 <body>
 
-<div id="info">Bikini Bottom - با WASD حرکت کن</div>
-<div id="ui">
-  <div></div>
-</div>
+<canvas id="game-canvas"></canvas>
+<div id="ui">با WASD حرکت کن</div>
+<button id="interact-btn">ورود به رستوران</button>
 
 <script>
-const canvas = document.getElementById('game-canvas') || document.createElement('canvas');
-canvas.id = 'game-canvas';
-document.body.appendChild(canvas);
+const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
+const btn = document.getElementById('interact-btn');
 
 function resize() {
   canvas.width = window.innerWidth;
@@ -32,12 +33,8 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// --- تنظیمات بازی ---
 const WORLD_WIDTH = 2000;
 const WORLD_HEIGHT = 1500;
-const SAND_COLOR = '#e6d5a8';
-const WATER_COLOR = '#87CEEB';
-
 const keys = { w: false, a: false, s: false, d: false };
 
 window.addEventListener('keydown', (e) => {
@@ -54,68 +51,89 @@ window.addEventListener('keyup', (e) => {
   if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
 });
 
-const player = {
-  x: WORLD_WIDTH / 2,
-  y: WORLD_HEIGHT / 2,
-  size: 40,
-  speed: 5,
-  color: '#ffcc00' // رنگ زرد (باب اسفنجی)
-};
+const player = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2, size: 40, speed: 6, color: '#ffcc00' };
+const camera = { x: 0, y: 0 };
 
-const camera = {
-  x: 0,
-  y: 0
-};
-
-// --- خونه‌ها و ساختمون‌ها ---
+// ساختمون‌ها
 const buildings = [
-  { x: WORLD_WIDTH / 2 - 200, y: WORLD_HEIGHT / 2 - 200, w: 100, h: 150, color: '#ffaa00', name: 'آناناس' },
+  { x: WORLD_WIDTH / 2 - 150, y: WORLD_HEIGHT / 2 - 150, w: 100, h: 150, color: '#ffaa00', name: 'آناناس' },
   { x: WORLD_WIDTH / 2 + 200, y: WORLD_HEIGHT / 2 - 100, w: 120, h: 120, color: '#888888', name: 'خونه اختاپوس' },
-  { x: WORLD_WIDTH / 2 - 400, y: WORLD_HEIGHT / 2 + 100, w: 150, h: 100, color: '#8b4513', name: 'رستوران خرچنگ' }
+  { x: WORLD_WIDTH / 2 - 300, y: WORLD_HEIGHT / 2 + 150, w: 180, h: 120, color: '#8b4513', name: 'رستوران خرچنگ' }
 ];
 
+// وضعیت بازی
+let insideRestaurant = false;
+
 function update() {
+  if (insideRestaurant) return; // اگه داخل رستورانیم، حرکت نکن
+
   if (keys.w) player.y -= player.speed;
   if (keys.s) player.y += player.speed;
   if (keys.a) player.x -= player.speed;
   if (keys.d) player.x += player.speed;
 
-  // محدود کردن بازیکن به دنیا
   player.x = Math.max(0, Math.min(WORLD_WIDTH, player.x));
   player.y = Math.max(0, Math.min(WORLD_HEIGHT, player.y));
 
-  // دوربین دنبال بازیکن
   camera.x = player.x - canvas.width / 2;
   camera.y = player.y - canvas.height / 2;
+
+  // بررسی فاصله با رستوران
+  const restaurant = buildings[2];
+  const dist = Math.hypot(player.x - (restaurant.x + restaurant.w/2), player.y - (restaurant.y + restaurant.h/2));
+  
+  if (dist < 100) {
+    btn.style.display = 'block'; // دکمه رو نشون بده
+  } else {
+    btn.style.display = 'none'; // دکمه رو مخفی کن
+  }
 }
 
 function draw() {
-  // پس‌زمینه (آسمون/آب)
-  ctx.fillStyle = WATER_COLOR;
+  ctx.fillStyle = '#87CEEB';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // زمین شنی
+  if (insideRestaurant) {
+    // --- دنیای داخل رستوران ---
+    ctx.fillStyle = '#8b4513'; // دیوارها
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#ffcc00'; // کف
+    ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
+    
+    ctx.fillStyle = '#fff';
+    ctx.font = '30px Tahoma';
+    ctx.textAlign = 'center';
+    ctx.fillText('داخل رستوران خرچنگ 🍔', canvas.width / 2, 100);
+
+    // دکمه خروج
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(canvas.width / 2 - 50, canvas.height - 100, 100, 50);
+    ctx.fillStyle = '#fff';
+    ctx.font = '20px Tahoma';
+    ctx.fillText('خروج', canvas.width / 2, canvas.height - 65);
+
+    return;
+  }
+
+  // --- دنیای بیرون ---
   ctx.save();
   ctx.translate(-camera.x, -camera.y);
   
-  ctx.fillStyle = SAND_COLOR;
+  ctx.fillStyle = '#e6d5a8'; // زمین شنی
   ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
-  // نقاشی ساختمون‌ها
   buildings.forEach(b => {
     ctx.fillStyle = b.color;
     ctx.fillRect(b.x, b.y, b.w, b.h);
-    
     ctx.fillStyle = '#000';
     ctx.font = '16px Tahoma';
-    ctx.fillText(b.name, b.x + 10, b.y - 10);
+    ctx.textAlign = 'center';
+    ctx.fillText(b.name, b.x + b.w/2, b.y - 10);
   });
 
-  // نقاشی بازیکن (باب اسفنجی)
+  // نقاشی باب اسفنجی
   ctx.fillStyle = player.color;
   ctx.fillRect(player.x, player.y, player.size, player.size);
-  
-  // چشم‌های باب اسفنجی (برای بامزه شدن)
   ctx.fillStyle = '#fff';
   ctx.fillRect(player.x + 5, player.y + 5, 10, 10);
   ctx.fillRect(player.x + 25, player.y + 5, 10, 10);
@@ -125,6 +143,29 @@ function draw() {
 
   ctx.restore();
 }
+
+// مدیریت کلیک روی دکمه
+btn.addEventListener('click', () => {
+  if (!insideRestaurant) {
+    insideRestaurant = true;
+    btn.style.display = 'none';
+    document.getElementById('ui').innerText = 'داخل رستوران - برای خروج کلیک کن';
+  }
+});
+
+// مدیریت کلیک روی صفحه (برای خروج)
+canvas.addEventListener('click', (e) => {
+  if (insideRestaurant) {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    // اگه روی دکمه قرمز خروج کلیک شد
+    if (x > canvas.width / 2 - 50 && x < canvas.width / 2 + 50 && y > canvas.height - 100 && y < canvas.height - 50) {
+      insideRestaurant = false;
+      document.getElementById('ui').innerText = 'با WASD حرکت کن';
+    }
+  }
+});
 
 function animate() {
   requestAnimationFrame(animate);
