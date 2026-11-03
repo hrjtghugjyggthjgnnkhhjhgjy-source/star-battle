@@ -1,1 +1,138 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Bikini Bottom 2D</title>
+<style>
+  body { margin: 0; overflow: hidden; background: #87CEEB; font-family: Tahoma; touch-action: none; }
+  canvas { display: block; }
+  #ui { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 10; pointer-events: none; }
+  .btn { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #fff; font-size: 16px; font-weight: bold; color: #fff; display: flex; justify-content: center; align-items: center; pointer-events: auto; background: rgba(255,255,255,0.2); }
+  #info { position: absolute; top: 20px; width: 100%; text-align: center; color: #fff; font-size: 20px; text-shadow: 2px 2px 4px #000; z-index: 10; pointer-events: none; }
+</style>
+</head>
+<body>
 
+<div id="info">Bikini Bottom - با WASD حرکت کن</div>
+<div id="ui">
+  <div></div>
+</div>
+
+<script>
+const canvas = document.getElementById('game-canvas') || document.createElement('canvas');
+canvas.id = 'game-canvas';
+document.body.appendChild(canvas);
+const ctx = canvas.getContext('2d');
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+// --- تنظیمات بازی ---
+const WORLD_WIDTH = 2000;
+const WORLD_HEIGHT = 1500;
+const SAND_COLOR = '#e6d5a8';
+const WATER_COLOR = '#87CEEB';
+
+const keys = { w: false, a: false, s: false, d: false };
+
+window.addEventListener('keydown', (e) => {
+  if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
+  if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
+  if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
+  if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = false;
+  if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
+  if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
+  if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
+});
+
+const player = {
+  x: WORLD_WIDTH / 2,
+  y: WORLD_HEIGHT / 2,
+  size: 40,
+  speed: 5,
+  color: '#ffcc00' // رنگ زرد (باب اسفنجی)
+};
+
+const camera = {
+  x: 0,
+  y: 0
+};
+
+// --- خونه‌ها و ساختمون‌ها ---
+const buildings = [
+  { x: WORLD_WIDTH / 2 - 200, y: WORLD_HEIGHT / 2 - 200, w: 100, h: 150, color: '#ffaa00', name: 'آناناس' },
+  { x: WORLD_WIDTH / 2 + 200, y: WORLD_HEIGHT / 2 - 100, w: 120, h: 120, color: '#888888', name: 'خونه اختاپوس' },
+  { x: WORLD_WIDTH / 2 - 400, y: WORLD_HEIGHT / 2 + 100, w: 150, h: 100, color: '#8b4513', name: 'رستوران خرچنگ' }
+];
+
+function update() {
+  if (keys.w) player.y -= player.speed;
+  if (keys.s) player.y += player.speed;
+  if (keys.a) player.x -= player.speed;
+  if (keys.d) player.x += player.speed;
+
+  // محدود کردن بازیکن به دنیا
+  player.x = Math.max(0, Math.min(WORLD_WIDTH, player.x));
+  player.y = Math.max(0, Math.min(WORLD_HEIGHT, player.y));
+
+  // دوربین دنبال بازیکن
+  camera.x = player.x - canvas.width / 2;
+  camera.y = player.y - canvas.height / 2;
+}
+
+function draw() {
+  // پس‌زمینه (آسمون/آب)
+  ctx.fillStyle = WATER_COLOR;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // زمین شنی
+  ctx.save();
+  ctx.translate(-camera.x, -camera.y);
+  
+  ctx.fillStyle = SAND_COLOR;
+  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+
+  // نقاشی ساختمون‌ها
+  buildings.forEach(b => {
+    ctx.fillStyle = b.color;
+    ctx.fillRect(b.x, b.y, b.w, b.h);
+    
+    ctx.fillStyle = '#000';
+    ctx.font = '16px Tahoma';
+    ctx.fillText(b.name, b.x + 10, b.y - 10);
+  });
+
+  // نقاشی بازیکن (باب اسفنجی)
+  ctx.fillStyle = player.color;
+  ctx.fillRect(player.x, player.y, player.size, player.size);
+  
+  // چشم‌های باب اسفنجی (برای بامزه شدن)
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(player.x + 5, player.y + 5, 10, 10);
+  ctx.fillRect(player.x + 25, player.y + 5, 10, 10);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(player.x + 8, player.y + 8, 4, 4);
+  ctx.fillRect(player.x + 28, player.y + 8, 4, 4);
+
+  ctx.restore();
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  update();
+  draw();
+}
+
+animate();
+</script>
+</body>
+</html>
