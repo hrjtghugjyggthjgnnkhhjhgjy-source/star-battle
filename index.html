@@ -1,208 +1,200 @@
 <!DOCTYPE html>
-<html lang="fa" dir="rtl">
+<html lang="fa">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Bikini Bottom - Krusty Krab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bikini Bottom FPS</title>
 <style>
-  body { margin: 0; overflow: hidden; background: #000; font-family: Tahoma; }
+  body { margin: 0; overflow: hidden; background: #000; }
   canvas { display: block; }
-  #ui { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #fff; font-size: 18px; z-index: 10; text-shadow: 1px 1px 3px #000; pointer-events: none; }
-  #interact-btn { 
-    position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
-    padding: 15px 30px; font-size: 20px; background: #ffcc00; border: none; border-radius: 10px;
-    cursor: pointer; font-weight: bold; display: none; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-  }
-  #interact-btn:active { background: #e6b800; }
+  #ui { position: absolute; top: 10px; left: 10px; color: #fff; font-family: Tahoma; font-size: 20px; pointer-events: none; }
 </style>
 </head>
 <body>
-
-<canvas id="game-canvas"></canvas>
-<div id="ui">با WASD حرکت کن</div>
-<button id="interact-btn">ورود به رستوران</button>
+<canvas id="game"></canvas>
+<div id="ui">WASD حرکت | موس چرخش | کلیک برای قفل موس</div>
 
 <script>
-const canvas = document.getElementById('game-canvas');
+const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const btn = document.getElementById('interact-btn');
-const uiText = document.getElementById('ui');
+let W, H;
 
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
 }
 window.addEventListener('resize', resize);
 resize();
 
-const WORLD_WIDTH = 2000;
-const WORLD_HEIGHT = 1500;
+// --- تنظیمات نقشه (۱ = دیوار، ۰ = فضای خالی) ---
+// این نقشه رو می‌تونی تغییر بدی تا خونه‌ها و جنگل ساخته بشه
+const map = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,1], // ۲ = جنگل
+  [1,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
+const MAP_W = map[0].length;
+const MAP_H = map.length;
+
+// بازیکن
+let posX = 2.0;
+let posY = 2.0;
+let dirX = 1.0;
+let dirY = 0.0;
+let planeX = 0.0;
+let planeY = 0.66; // میدان دید
+
 const keys = { w: false, a: false, s: false, d: false };
 
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
-  if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
-  if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
-  if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
+  if (e.key === 'w' || e.key === 'ArrowUp') keys.w = true;
+  if (e.key === 's' || e.key === 'ArrowDown') keys.s = true;
+  if (e.key === 'a' || e.key === 'ArrowLeft') keys.a = true;
+  if (e.key === 'd' || e.key === 'ArrowRight') keys.d = true;
 });
 
 window.addEventListener('keyup', (e) => {
-  if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = false;
-  if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
-  if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
-  if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
+  if (e.key === 'w' || e.key === 'ArrowUp') keys.w = false;
+  if (e.key === 's' || e.key === 'ArrowDown') keys.s = false;
+  if (e.key === 'a' || e.key === 'ArrowLeft') keys.a = false;
+  if (e.key === 'd' || e.key === 'ArrowRight') keys.d = false;
 });
 
-const player = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2, size: 40, speed: 6, color: '#ffcc00' };
-const camera = { x: 0, y: 0 };
+// قفل موس برای چرخش
+canvas.addEventListener('click', () => {
+  canvas.requestPointerLock();
+});
 
-// ساختمون‌های بیرون
-const buildings = [
-  { x: WORLD_WIDTH / 2 - 150, y: WORLD_HEIGHT / 2 - 150, w: 100, h: 150, color: '#ffaa00', name: 'آناناس' },
-  { x: WORLD_WIDTH / 2 + 200, y: WORLD_HEIGHT / 2 - 100, w: 120, h: 120, color: '#888888', name: 'خونه اختاپوس' },
-  { x: WORLD_WIDTH / 2 - 300, y: WORLD_HEIGHT / 2 + 150, w: 180, h: 120, color: '#8b4513', name: 'رستوران خرچنگ' }
-];
+document.addEventListener('mousemove', (e) => {
+  if (document.pointerLockElement === canvas) {
+    const rotSpeed = 0.002;
+    const oldDirX = dirX;
+    dirX = dirX * Math.cos(-e.movementX * rotSpeed) - dirY * Math.sin(-e.movementX * rotSpeed);
+    dirY = oldDirX * Math.sin(-e.movementX * rotSpeed) + dirY * Math.cos(-e.movementX * rotSpeed);
+    
+    const oldPlaneX = planeX;
+    planeX = planeX * Math.cos(-e.movementX * rotSpeed) - planeY * Math.sin(-e.movementX * rotSpeed);
+    planeY = oldPlaneX * Math.sin(-e.movementX * rotSpeed) + planeY * Math.cos(-e.movementX * rotSpeed);
+  }
+});
 
-let insideRestaurant = false;
-
+// حرکت و برخورد
 function update() {
-  if (insideRestaurant) return; 
-
-  if (keys.w) player.y -= player.speed;
-  if (keys.s) player.y += player.speed;
-  if (keys.a) player.x -= player.speed;
-  if (keys.d) player.x += player.speed;
-
-  player.x = Math.max(0, Math.min(WORLD_WIDTH, player.x));
-  player.y = Math.max(0, Math.min(WORLD_HEIGHT, player.y));
-
-  camera.x = player.x - canvas.width / 2;
-  camera.y = player.y - canvas.height / 2;
-
-  const restaurant = buildings[2];
-  const dist = Math.hypot(player.x - (restaurant.x + restaurant.w/2), player.y - (restaurant.y + restaurant.h/2));
-  
-  if (dist < 100) {
-    btn.style.display = 'block'; 
-  } else {
-    btn.style.display = 'none'; 
+  const moveSpeed = 0.05;
+  if (keys.w) {
+    if (map[Math.floor(posY)][Math.floor(posX + dirX * moveSpeed)] === 0) posX += dirX * moveSpeed;
+    if (map[Math.floor(posY + dirY * moveSpeed)][Math.floor(posX)] === 0) posY += dirY * moveSpeed;
+  }
+  if (keys.s) {
+    if (map[Math.floor(posY)][Math.floor(posX - dirX * moveSpeed)] === 0) posX -= dirX * moveSpeed;
+    if (map[Math.floor(posY - dirY * moveSpeed)][Math.floor(posX)] === 0) posY -= dirY * moveSpeed;
+  }
+  if (keys.a) {
+    if (map[Math.floor(posY)][Math.floor(posX - planeX * moveSpeed)] === 0) posX -= planeX * moveSpeed;
+    if (map[Math.floor(posY - planeY * moveSpeed)][Math.floor(posX)] === 0) posY -= planeY * moveSpeed;
+  }
+  if (keys.d) {
+    if (map[Math.floor(posY)][Math.floor(posX + planeX * moveSpeed)] === 0) posX += planeX * moveSpeed;
+    if (map[Math.floor(posY + planeY * moveSpeed)][Math.floor(posX)] === 0) posY += planeY * moveSpeed;
   }
 }
 
+// رندر سه‌بعدی
 function draw() {
+  // آسمون
   ctx.fillStyle = '#87CEEB';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, W, H / 2);
+  // زمین
+  ctx.fillStyle = '#e6d5a8';
+  ctx.fillRect(0, H / 2, W, H / 2);
 
-  if (insideRestaurant) {
-    drawRestaurantInterior();
-    return;
-  }
+  for (let x = 0; x < W; x++) {
+    const cameraX = 2 * x / W - 1;
+    const rayDirX = dirX + planeX * cameraX;
+    const rayDirY = dirY + planeY * cameraX;
 
-  ctx.save();
-  ctx.translate(-camera.x, -camera.y);
-  
-  ctx.fillStyle = '#e6d5a8'; 
-  ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+    let mapX = Math.floor(posX);
+    let mapY = Math.floor(posY);
 
-  buildings.forEach(b => {
-    ctx.fillStyle = b.color;
-    ctx.fillRect(b.x, b.y, b.w, b.h);
-    ctx.fillStyle = '#000';
-    ctx.font = '16px Tahoma';
-    ctx.textAlign = 'center';
-    ctx.fillText(b.name, b.x + b.w/2, b.y - 10);
-  });
+    const deltaDistX = Math.abs(1 / rayDirX);
+    const deltaDistY = Math.abs(1 / rayDirY);
 
-  // باب اسفنجی
-  ctx.fillStyle = player.color;
-  ctx.fillRect(player.x, player.y, player.size, player.size);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(player.x + 5, player.y + 5, 10, 10);
-  ctx.fillRect(player.x + 25, player.y + 5, 10, 10);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(player.x + 8, player.y + 8, 4, 4);
-  ctx.fillRect(player.x + 28, player.y + 8, 4, 4);
+    let stepX, stepY;
+    let sideDistX, sideDistY;
 
-  ctx.restore();
-}
-
-// اینجا داخل رستوران رو نقاشی می‌کنیم
-function drawRestaurantInterior() {
-  // پس زمینه چوبی
-  ctx.fillStyle = '#3e2723'; 
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  
-  // کف
-  ctx.fillStyle = '#d7ccc8'; 
-  ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
-
-  // عنوان
-  ctx.fillStyle = '#ffcc00';
-  ctx.font = 'bold 30px Tahoma';
-  ctx.textAlign = 'center';
-  ctx.fillText('🍔 Krusty Krab 🍔', canvas.width / 2, 100);
-
-  // پیشخوان (آقای خرچنگ)
-  ctx.fillStyle = '#5d4037';
-  ctx.fillRect(canvas.width - 200, 200, 150, 300);
-  ctx.fillStyle = '#fff';
-  ctx.font = '16px Tahoma';
-  ctx.fillText('پیشخوان', canvas.width - 125, 180);
-  
-  // آقای خرچنگ (مکعب قرمز)
-  ctx.fillStyle = '#ff0000';
-  ctx.fillRect(canvas.width - 170, 230, 40, 40);
-
-  // میز و صندلی
-  ctx.fillStyle = '#795548';
-  // میز 1
-  ctx.fillRect(200, 300, 100, 60);
-  // میز 2
-  ctx.fillRect(400, 400, 100, 60);
-  // میز 3
-  ctx.fillRect(200, 500, 100, 60);
-
-  // مشتری‌ها (ماهی‌ها)
-  ctx.fillStyle = '#64b5f6';
-  ctx.fillRect(220, 320, 30, 30); // مشتری میز 1
-  ctx.fillStyle = '#81c784';
-  ctx.fillRect(420, 420, 30, 30); // مشتری میز 2
-
-  // دکمه خروج
-  ctx.fillStyle = '#d32f2f';
-  ctx.fillRect(canvas.width / 2 - 60, canvas.height - 120, 120, 60);
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 20px Tahoma';
-  ctx.fillText('خروج', canvas.width / 2, canvas.height - 80);
-}
-
-btn.addEventListener('click', () => {
-  if (!insideRestaurant) {
-    insideRestaurant = true;
-    btn.style.display = 'none';
-    uiText.innerText = 'برای خروج روی دکمه قرمز کلیک کن';
-  }
-});
-
-canvas.addEventListener('click', (e) => {
-  if (insideRestaurant) {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    if (x > canvas.width / 2 - 60 && x < canvas.width / 2 + 60 && y > canvas.height - 120 && y < canvas.height - 60) {
-      insideRestaurant = false;
-      uiText.innerText = 'با WASD حرکت کن';
+    if (rayDirX < 0) {
+      stepX = -1;
+      sideDistX = (posX - mapX) * deltaDistX;
+    } else {
+      stepX = 1;
+      sideDistX = (mapX + 1.0 - posX) * deltaDistX;
     }
-  }
-});
+    if (rayDirY < 0) {
+      stepY = -1;
+      sideDistY = (posY - mapY) * deltaDistY;
+    } else {
+      stepY = 1;
+      sideDistY = (mapY + 1.0 - posY) * deltaDistY;
+    }
 
-function animate() {
-  requestAnimationFrame(animate);
+    let hit = 0;
+    let side;
+
+    while (hit === 0) {
+      if (sideDistX < sideDistY) {
+        sideDistX += deltaDistX;
+        mapX += stepX;
+        side = 0;
+      } else {
+        sideDistY += deltaDistY;
+        mapY += stepY;
+        side = 1;
+      }
+      if (map[mapY] && map[mapY][mapX] > 0) hit = 1;
+    }
+
+    let perpWallDist;
+    if (side === 0) perpWallDist = (sideDistX - deltaDistX);
+    else perpWallDist = (sideDistY - deltaDistY);
+
+    const lineHeight = Math.floor(H / perpWallDist);
+    let drawStart = -lineHeight / 2 + H / 2;
+    if (drawStart < 0) drawStart = 0;
+    let drawEnd = lineHeight / 2 + H / 2;
+    if (drawEnd >= H) drawEnd = H - 1;
+
+    // رنگ دیوارها بر اساس نوع
+    let color;
+    const tile = map[mapY][mapX];
+    if (tile === 1) {
+        color = side === 1 ? '#8b4513' : '#a0522d'; // رستوران / خونه
+    } else if (tile === 2) {
+        color = side === 1 ? '#2e7d32' : '#4caf50'; // جنگل
+    }
+
+    ctx.fillStyle = color;
+    ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
+  }
+}
+
+function loop() {
   update();
   draw();
+  requestAnimationFrame(loop);
 }
 
-animate();
+loop();
 </script>
 </body>
 </html>
