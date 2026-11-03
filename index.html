@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Star Battle - نبرد ستاره‌ای</title>
+<title>Star Battle</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -23,10 +23,10 @@
   <div id="skin-screen" class="screen">
     <h1>سفینه‌ت رو انتخاب کن</h1>
     <div class="ship-grid">
-      <button class="ship-btn active" data-ship="jet">✈️ جت جنگنده</button>
-      <button class="ship-btn" data-ship="spaceship">🛸 سفینه فضایی</button>
+      <button class="ship-btn active" data-ship="jet">✈️ جت</button>
+      <button class="ship-btn" data-ship="spaceship">🛸 سفینه</button>
       <button class="ship-btn" data-ship="heli">🚁 هلیکوپتر</button>
-      <button class="ship-btn" data-ship="ufo">👽 بشقاب پرنده</button>
+      <button class="ship-btn" data-ship="ufo">👽 بشقاب</button>
     </div>
     <button class="menu-btn gray" data-action="back" style="margin-top: 15px;">بازگشت</button>
   </div>
@@ -35,11 +35,8 @@
   <div id="help-screen" class="screen">
     <h1>راهنما</h1>
     <div class="help-text">
-      <p>🎮 <b>حرکت:</b> دکمه‌های جهت‌دار</p>
+      <p>🎮 <b>حرکت:</b> با جوی‌استیک</p>
       <p>🔫 <b>شلیک:</b> دکمه FIRE</p>
-      <p>🤖 <b>AUTO:</b> شلیک خودکار</p>
-      <p>💣 <b>BOMB:</b> نابودی دشمن‌ها</p>
-      <p>🔥 <b>COMBO:</b> پشت سر هم بزن!</p>
     </div>
     <button class="menu-btn gray" data-action="back">بازگشت</button>
   </div>
@@ -48,7 +45,6 @@
   <div id="gameover-screen" class="screen">
     <h1 style="color:#ff5050;">بازی تموم شد!</h1>
     <p style="color:#fff; font-size: 20px;">امتیاز: <span id="final-score" style="color:#ffdc3c; font-weight:bold;">0</span></p>
-    <p style="color:#aaa;">بهترین رکورد: <span id="best-score" style="color:#4ad07a; font-weight:bold;">0</span></p>
     <button class="menu-btn green" data-action="restart" style="margin-top:15px;">تلاش مجدد</button>
     <button class="menu-btn gray"  data-action="menu">بازگشت به منو</button>
   </div>
@@ -56,20 +52,16 @@
   <!-- HUD -->
   <div id="hud" class="hidden">
     <div class="hud-item">امتیاز: <span id="score">0</span></div>
-    <div class="hud-item">سطح: <span id="level">1</span></div>
     <div class="hud-item">جان: <span id="hp">**********</span></div>
   </div>
-  <div id="combo-hud"></div>
 
   <!-- کنترل‌ها -->
   <div id="touch-controls" class="hidden">
-    <button class="ctrl-btn" id="btn-up">▲</button>
-    <button class="ctrl-btn" id="btn-left">◀</button>
-    <button class="ctrl-btn" id="btn-right">▶</button>
-    <button class="ctrl-btn" id="btn-down">▼</button>
+    <!-- جوی‌استیک -->
+    <div id="joystick-zone">
+      <div id="joystick-knob"></div>
+    </div>
     <button class="ctrl-btn" id="btn-fire">FIRE</button>
-    <button class="ctrl-btn" id="btn-auto">AUTO</button>
-    <button class="ctrl-btn" id="btn-bomb">BOMB</button>
   </div>
 </div>
 
