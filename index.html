@@ -1,191 +1,150 @@
 <!DOCTYPE html>
-<html lang="fa">
+<html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bikini Bottom FPS - First Person</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Star Battle</title>
 <style>
-  body { margin: 0; overflow: hidden; background: #000; }
+  body { margin: 0; overflow: hidden; background: #000; font-family: Tahoma; }
   canvas { display: block; }
-  #ui { position: absolute; top: 10px; left: 10px; color: #fff; font-family: Tahoma; font-size: 20px; pointer-events: none; text-shadow: 2px 2px 4px #000; }
+  #ui { position: absolute; bottom: 20px; width: 100%; display: flex; justify-content: space-between; padding: 0 20px; box-sizing: border-box; z-index: 10; pointer-events: none; }
+  .btn { width: 80px; height: 80px; border-radius: 50%; border: 3px solid #fff; font-size: 16px; font-weight: bold; color: #fff; display: flex; justify-content: center; align-items: center; pointer-events: auto; background: rgba(255,255,255,0.2); }
+  #info { position: absolute; top: 20px; width: 100%; text-align: center; color: #fff; font-size: 20px; text-shadow: 2px 2px 4px #000; z-index: 10; pointer-events: none; }
 </style>
 </head>
 <body>
-<canvas id="game"></canvas>
-<div id="ui">WASD حرکت | موس چرخش | کلیک برای قفل | Esc برای خروج</div>
+
+<canvas id="game-canvas"></canvas>
+<div id="info">امتیاز: 0</div>
+<div id="ui">
+  <div></div>
+</div>
 
 <script>
-const canvas = document.getElementById('game');
+const canvas = document.getElementById('game-canvas') || document.createElement('canvas');
+canvas.id = 'game-canvas';
+document.body.appendChild(canvas);
 const ctx = canvas.getContext('2d');
-let W, H;
 
 function resize() {
-  W = canvas.width = window.innerWidth;
-  H = canvas.height = window.innerHeight;
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
 window.addEventListener('resize', resize);
 resize();
 
-// --- ساخت تکسچرها ---
-const texRoad = document.createElement('canvas'); texRoad.width = 64; texRoad.height = 64;
-const tRoad = texRoad.getContext('2d');
-tRoad.fillStyle = '#333333'; tRoad.fillRect(0,0,64,64);
-tRoad.fillStyle = '#ffff00'; tRoad.fillRect(30, 0, 4, 64); 
+const player = { x: canvas.width / 2, y: canvas.height - 100, size: 40, speed: 7, hp: 10 };
+const bullets = [];
+const enemies = [];
+const keys = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, ArrowDown: false, Space: false };
+let score = 0;
+let enemySpawnTimer = 0;
 
-const texPineapple = document.createElement('canvas'); texPineapple.width = 64; texPineapple.height = 64;
-const tPine = texPineapple.getContext('2d');
-tPine.fillStyle = '#ffaa00'; tPine.fillRect(0,0,64,64); 
-tPine.strokeStyle = '#cc8800'; tPine.lineWidth = 2;
-for(let i=0; i<64; i+=16) { 
-    tPine.beginPath(); tPine.moveTo(i,0); tPine.lineTo(i,64); tPine.stroke();
-    tPine.beginPath(); tPine.moveTo(0,i); tPine.lineTo(64,i); tPine.stroke();
-}
-tPine.fillStyle = '#88ccff'; tPine.fillRect(10, 15, 15, 15); tPine.fillRect(40, 15, 15, 15); 
-tPine.fillStyle = '#5d4037'; tPine.fillRect(25, 40, 15, 24); 
-
-const texSquid = document.createElement('canvas'); texSquid.width = 64; texSquid.height = 64;
-const tSquid = texSquid.getContext('2d');
-tSquid.fillStyle = '#888888'; tSquid.fillRect(0,0,64,64);
-tSquid.fillStyle = '#333333'; tSquid.fillRect(15, 15, 15, 20); tSquid.fillRect(35, 15, 15, 20);
-tSquid.fillStyle = '#5d4037'; tSquid.fillRect(25, 40, 15, 24);
-
-const texBrick = document.createElement('canvas'); texBrick.width = 64; texBrick.height = 64;
-const tBrick = texBrick.getContext('2d');
-tBrick.fillStyle = '#8b4513'; tBrick.fillRect(0,0,64,64);
-tBrick.strokeStyle = '#5d4037'; tBrick.lineWidth = 2;
-for(let i=0; i<64; i+=16) { tBrick.beginPath(); tBrick.moveTo(0,i); tBrick.lineTo(64,i); tBrick.stroke(); }
-for(let i=0; i<64; i+=32) { tBrick.beginPath(); tBrick.moveTo(i,0); tBrick.lineTo(i,64); tBrick.stroke(); }
-
-const textures = [null, texBrick, texRoad, texPineapple, texSquid];
-
-// --- نقشه (1=آجر، 2=جاده، 3=آناناس، 4=اختاپوس) ---
-const map = [
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-  [1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
-  [1,2,0,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
-  [1,2,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
-  [1,2,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
-  [1,2,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
-  [1,2,0,3,3,3,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1], 
-  [1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
-  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,1], 
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,4,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,4,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,0,4,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-];
-
-  // مختصات جدید (وسط یه خیابون باز و خالی)
-let posX = 3.5, posY = 8.5; 
-let dirX = 0.0, dirY = 1.0; // رو به پایین (جنوب)
-
-const keys = { w: false, a: false, s: false, d: false };
 window.addEventListener('keydown', (e) => {
-  if (e.key === 'w' || e.key === 'ArrowUp') keys.w = true;
-  if (e.key === 's' || e.key === 'ArrowDown') keys.s = true;
-  if (e.key === 'a' || e.key === 'ArrowLeft') keys.a = true;
-  if (e.key === 'd' || e.key === 'ArrowRight') keys.d = true;
-});
-window.addEventListener('keyup', (e) => {
-  if (e.key === 'w' || e.key === 'ArrowUp') keys.w = false;
-  if (e.key === 's' || e.key === 'ArrowDown') keys.s = false;
-  if (e.key === 'a' || e.key === 'ArrowLeft') keys.a = false;
-  if (e.key === 'd' || e.key === 'ArrowRight') keys.d = false;
+  if (e.key in keys) keys[e.key] = true;
+  if (e.key === ' ' || e.key === 'Spacebar') keys.Space = true;
 });
 
-// چرخش با موس
-canvas.addEventListener('click', () => canvas.requestPointerLock());
-document.addEventListener('mousemove', (e) => {
-  if (document.pointerLockElement === canvas) {
-    const rotSpeed = 0.002;
-    const oldDirX = dirX;
-    dirX = dirX * Math.cos(-e.movementX * rotSpeed) - dirY * Math.sin(-e.movementX * rotSpeed);
-    dirY = oldDirX * Math.sin(-e.movementX * rotSpeed) + dirY * Math.cos(-e.movementX * rotSpeed);
-    const oldPlaneX = planeX;
-    planeX = planeX * Math.cos(-e.movementX * rotSpeed) - planeY * Math.sin(-e.movementX * rotSpeed);
-    planeY = oldPlaneX * Math.sin(-e.movementX * rotSpeed) + planeY * Math.cos(-e.movementX * rotSpeed);
-  }
+window.addEventListener('keyup', (e) => {
+  if (e.key in keys) keys[e.key] = false;
+  if (e.key === ' ' || e.key === 'Spacebar') keys.Space = false;
 });
 
 function update() {
-  const moveSpeed = 0.05;
-  if (keys.w) {
-    if (map[Math.floor(posY)][Math.floor(posX + dirX * moveSpeed)] < 2) posX += dirX * moveSpeed;
-    if (map[Math.floor(posY + dirY * moveSpeed)][Math.floor(posX)] < 2) posY += dirY * moveSpeed;
+  if (keys.ArrowLeft) player.x -= player.speed;
+  if (keys.ArrowRight) player.x += player.speed;
+  if (keys.ArrowUp) player.y -= player.speed;
+  if (keys.ArrowDown) player.y += player.speed;
+
+  player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
+  player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
+
+  if (keys.Space) {
+    bullets.push({ x: player.x + player.size/2, y: player.y, w: 4, h: 15, speed: 10 });
+    keys.Space = false; // shoot one bullet per press
   }
-  if (keys.s) {
-    if (map[Math.floor(posY)][Math.floor(posX - dirX * moveSpeed)] < 2) posX -= dirX * moveSpeed;
-    if (map[Math.floor(posY - dirY * moveSpeed)][Math.floor(posX)] < 2) posY -= dirY * moveSpeed;
+
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    bullets[i].y -= bullets[i].speed;
+    if (bullets[i].y < 0) bullets.splice(i, 1);
   }
-  if (keys.a) {
-    if (map[Math.floor(posY)][Math.floor(posX - planeX * moveSpeed)] < 2) posX -= planeX * moveSpeed;
-    if (map[Math.floor(posY - planeY * moveSpeed)][Math.floor(posX)] < 2) posY -= planeY * moveSpeed;
+
+  enemySpawnTimer++;
+  if (enemySpawnTimer > 60) {
+    enemies.push({ x: Math.random() * (canvas.width - 40), y: -40, size: 40, speed: 2 + Math.random() * 2 });
+    enemySpawnTimer = 0;
   }
-  if (keys.d) {
-    if (map[Math.floor(posY)][Math.floor(posX + planeX * moveSpeed)] < 2) posX += planeX * moveSpeed;
-    if (map[Math.floor(posY + planeY * moveSpeed)][Math.floor(posX)] < 2) posY += planeY * moveSpeed;
+
+  for (let i = enemies.length - 1; i >= 0; i--) {
+    enemies[i].y += enemies[i].speed;
+    
+    // Check collision with player
+    if (
+      enemies[i].x < player.x + player.size &&
+      enemies[i].x + enemies[i].size > player.x &&
+      enemies[i].y < player.y + player.size &&
+      enemies[i].y + enemies[i].size > player.y
+    ) {
+      enemies.splice(i, 1);
+      player.hp--;
+      if (player.hp <= 0) {
+        alert('بازی تموم شد! امتیاز: ' + score);
+        window.location.reload();
+      }
+      continue;
+    }
+
+    if (enemies[i].y > canvas.height) enemies.splice(i, 1);
+  }
+
+  // Check bullet-enemy collision
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    for (let j = enemies.length - 1; j >= 0; j--) {
+      if (
+        bullets[i].x < enemies[j].x + enemies[j].size &&
+        bullets[i].x + bullets[i].w > enemies[j].x &&
+        bullets[i].y < enemies[j].y + enemies[j].size &&
+        bullets[i].y + bullets[i].h > enemies[j].y
+      ) {
+        bullets.splice(i, 1);
+        enemies.splice(j, 1);
+        score += 10;
+        document.getElementById('info').innerText = 'امتیاز: ' + score;
+        break;
+      }
+    }
   }
 }
 
-// رندر سه‌بعدی (Raycasting)
 function draw() {
-  // آسمون
-  ctx.fillStyle = '#87CEEB';
-  ctx.fillRect(0, 0, W, H / 2);
-  
-  // زمین (آسفالت)
-  ctx.fillStyle = '#333333';
-  ctx.fillRect(0, H / 2, W, H / 2);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // کشیدن دیوارها
-  for (let x = 0; x < W; x++) {
-    const cameraX = 2 * x / W - 1;
-    const rayDirX = dirX + planeX * cameraX;
-    const rayDirY = dirY + planeY * cameraX;
-    let mapX = Math.floor(posX);
-    let mapY = Math.floor(posY);
-    const deltaDistX = Math.abs(1 / rayDirX);
-    const deltaDistY = Math.abs(1 / rayDirY);
-    let stepX, stepY, sideDistX, sideDistY;
+  // Draw player (Spaceship)
+  ctx.fillStyle = '#50dcdc';
+  ctx.beginPath();
+  ctx.moveTo(player.x + player.size/2, player.y);
+  ctx.lineTo(player.x, player.y + player.size);
+  ctx.lineTo(player.x + player.size, player.y + player.size);
+  ctx.closePath();
+  ctx.fill();
 
-    if (rayDirX < 0) { stepX = -1; sideDistX = (posX - mapX) * deltaDistX; }
-    else { stepX = 1; sideDistX = (mapX + 1.0 - posX) * deltaDistX; }
-    if (rayDirY < 0) { stepY = -1; sideDistY = (posY - mapY) * deltaDistY; }
-    else { stepY = 1; sideDistY = (mapY + 1.0 - posY) * deltaDistY; }
-
-    let hit = 0, side;
-    while (hit === 0) {
-      if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
-      else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
-      if (map[mapY] && map[mapY][mapX] > 0) hit = 1;
-    }
-
-    let perpWallDist = (side === 0) ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY);
-    const lineHeight = Math.floor(H / perpWallDist);
-    let drawStart = -lineHeight / 2 + H / 2;
-    if (drawStart < 0) drawStart = 0;
-    let drawEnd = lineHeight / 2 + H / 2;
-    if (drawEnd >= H) drawEnd = H - 1;
-
-    const tile = map[mapY][mapX];
-    const tex = textures[tile];
-    
-    let wallX; 
-    if (side === 0) wallX = posY + perpWallDist * rayDirY;
-    else wallX = posX + perpWallDist * rayDirX;
-    wallX -= Math.floor(wallX);
-
-    let texX = Math.floor(wallX * tex.width);
-    if(side === 0 && rayDirX > 0) texX = tex.width - texX - 1;
-    if(side === 1 && rayDirY < 0) texX = tex.width - texX - 1;
-
-    ctx.drawImage(tex, texX, 0, 1, tex.height, x, drawStart, 1, drawEnd - drawStart);
+  // Draw bullets
+  ctx.fillStyle = '#ffdc3c';
+  for (const b of bullets) {
+    ctx.fillRect(b.x, b.y, b.w, b.h);
   }
+
+  // Draw enemies
+  ctx.fillStyle = '#ff3232';
+  for (const e of enemies) {
+    ctx.fillRect(e.x, e.y, e.size, e.size);
+  }
+
+  // Draw HP
+  ctx.fillStyle = '#fff';
+  ctx.font = '20px Tahoma';
+  ctx.fillText('HP: ' + player.hp, 20, 30);
 }
 
 function loop() {
