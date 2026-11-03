@@ -2,71 +2,460 @@
 <html lang="fa" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Star Battle</title>
-<link rel="stylesheet" href="style.css">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, orientation=landscape">
+<title>Star Battle - نبرد ستاره‌ای</title>
+<style>
+/* تنظیمات برای تمام صفحه و افقی */
+* {
+  margin: 0; padding: 0; box-sizing: border-box;
+  font-family: Tahoma, Arial, sans-serif;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  width: 100vw; height: 100vh;
+  background: #06060f;
+  overflow: hidden;
+  touch-action: none;
+  position: fixed; /* جلوگیری از اسکرول */
+}
+
+/* کانتینر اصلی */
+#game-container {
+  position: absolute;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: #000;
+}
+
+#game-canvas {
+  display: block;
+  width: 100%; height: 100%;
+}
+
+/* ==================== صفحه‌ها ==================== */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  background: linear-gradient(180deg, #0a0a1f 0%, #101030 100%);
+  text-align: center;
+  z-index: 10;
+  overflow-y: auto;
+}
+
+.screen.active { display: flex; }
+
+.screen h1 {
+  color: #ffdc3c;
+  font-size: 28px;
+  text-shadow: 0 0 25px rgba(255, 220, 60, 0.7);
+}
+
+.menu-btn {
+  width: 200px;
+  padding: 10px 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0,0,0,0.4);
+  transition: transform 0.1s;
+}
+
+.menu-btn:active { transform: translateY(2px); }
+
+.menu-btn.green  { background: linear-gradient(180deg, #3aa864, #2a7d4a); }
+.menu-btn.blue   { background: linear-gradient(180deg, #4a7fd0, #2f5da0); }
+.menu-btn.orange { background: linear-gradient(180deg, #d08a3a, #a06520); }
+.menu-btn.gray   { background: linear-gradient(180deg, #6a6a80, #4a4a5a); }
+
+/* انتخاب سفینه (افقی) */
+.ship-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  max-width: 450px;
+}
+
+.ship-btn {
+  background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.2);
+  border-radius: 10px;
+  padding: 10px;
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ship-btn.active {
+  border-color: #ffdc3c;
+  background: rgba(255, 220, 60, 0.2);
+}
+
+/* HUD */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 15px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.hud-item {
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  background: rgba(0,0,0,0.6);
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+#hp { color: #ff5050; }
+
+/* ==================== دکمه‌های لمسی (چیدمان مخصوص حالت افقی) ==================== */
+#touch-controls {
+  position: absolute; inset: 0; z-index: 6; pointer-events: none;
+}
+
+.ctrl-btn {
+  position: absolute; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.5);
+  background: rgba(80, 150, 255, 0.3);
+  color: #fff; font-size: 16px; font-weight: bold;
+  display: flex; justify-content: center; align-items: center;
+  pointer-events: auto; touch-action: none;
+}
+
+.ctrl-btn:active { background: rgba(80, 150, 255, 0.9); transform: scale(0.95); }
+
+/* D-Pad سمت چپ */
+#btn-up    { left: 80px;  bottom: 100px; width: 55px; height: 55px; }
+#btn-left  { left: 15px;  bottom: 40px; width: 55px; height: 55px; }
+#btn-down  { left: 80px;  bottom: 40px; width: 55px; height: 55px; }
+#btn-right { left: 145px; bottom: 40px; width: 55px; height: 55px; }
+
+/* دکمه‌های اکشن سمت راست */
+#btn-fire {
+  right: 20px; bottom: 40px; width: 80px; height: 80px;
+  background: rgba(220, 50, 50, 0.5); font-size: 14px;
+}
+#btn-auto {
+  right: 110px; bottom: 40px; width: 65px; height: 65px;
+  background: rgba(60, 160, 90, 0.5); font-size: 12px;
+}
+#btn-auto.on { background: rgba(60, 255, 90, 0.9); }
+
+#btn-bomb {
+  right: 20px; bottom: 130px; width: 60px; height: 60px;
+  background: rgba(220, 130, 40, 0.5); font-size: 11px;
+}
+
+.hidden { display: none !important; }
+
+</style>
 </head>
 <body>
 
 <div id="game-container">
   <canvas id="game-canvas"></canvas>
 
-  <!-- منوی اصلی -->
   <div id="menu-screen" class="screen active">
     <h1>نبرد ستاره‌ای</h1>
-    <button class="menu-btn green"  data-action="start">شروع بازی</button>
-    <button class="menu-btn blue"   data-action="skin">انتخاب سفینه 🚀</button>
-    <button class="menu-btn orange" data-action="help">راهنما</button>
+    <button class="menu-btn green"  onclick="startGame()">شروع بازی</button>
+    <button class="menu-btn blue"   onclick="showScreen('skin-screen')">انتخاب سفینه 🚀</button>
   </div>
 
-  <!-- انتخاب سفینه -->
   <div id="skin-screen" class="screen">
     <h1>سفینه‌ت رو انتخاب کن</h1>
     <div class="ship-grid">
-      <button class="ship-btn active" data-ship="jet">✈️ جت</button>
-      <button class="ship-btn" data-ship="spaceship">🛸 سفینه</button>
-      <button class="ship-btn" data-ship="heli">🚁 هلیکوپتر</button>
-      <button class="ship-btn" data-ship="ufo">👽 بشقاب</button>
+      <button class="ship-btn active" onclick="setShip('jet', this)">✈️ جت</button>
+      <button class="ship-btn" onclick="setShip('spaceship', this)">🛸 سفینه</button>
+      <button class="ship-btn" onclick="setShip('heli', this)">🚁 هلیکوپتر</button>
+      <button class="ship-btn" onclick="setShip('ufo', this)">👽 بشقاب</button>
     </div>
-    <button class="menu-btn gray" data-action="back" style="margin-top: 15px;">بازگشت</button>
+    <button class="menu-btn gray" onclick="showScreen('menu-screen')" style="margin-top: 15px;">بازگشت</button>
   </div>
 
-  <!-- راهنما -->
-  <div id="help-screen" class="screen">
-    <h1>راهنما</h1>
-    <div class="help-text">
-      <p>🎮 <b>حرکت:</b> با جوی‌استیک</p>
-      <p>🔫 <b>شلیک:</b> دکمه FIRE</p>
-    </div>
-    <button class="menu-btn gray" data-action="back">بازگشت</button>
-  </div>
-
-  <!-- پایان بازی -->
   <div id="gameover-screen" class="screen">
     <h1 style="color:#ff5050;">بازی تموم شد!</h1>
-    <p style="color:#fff; font-size: 20px;">امتیاز: <span id="final-score" style="color:#ffdc3c; font-weight:bold;">0</span></p>
-    <button class="menu-btn green" data-action="restart" style="margin-top:15px;">تلاش مجدد</button>
-    <button class="menu-btn gray"  data-action="menu">بازگشت به منو</button>
+    <p style="color:#fff; font-size: 16px;">امتیاز: <span id="final-score" style="color:#ffdc3c;">0</span></p>
+    <button class="menu-btn green" onclick="startGame()">تلاش مجدد</button>
+    <button class="menu-btn gray" onclick="showScreen('menu-screen')">منو</button>
   </div>
 
-  <!-- HUD -->
   <div id="hud" class="hidden">
     <div class="hud-item">امتیاز: <span id="score">0</span></div>
     <div class="hud-item">جان: <span id="hp">**********</span></div>
   </div>
 
-  <!-- کنترل‌ها -->
   <div id="touch-controls" class="hidden">
-    <!-- جوی‌استیک -->
-    <div id="joystick-zone">
-      <div id="joystick-knob"></div>
-    </div>
+    <button class="ctrl-btn" id="btn-up">▲</button>
+    <button class="ctrl-btn" id="btn-left">◀</button>
+    <button class="ctrl-btn" id="btn-right">▶</button>
+    <button class="ctrl-btn" id="btn-down">▼</button>
     <button class="ctrl-btn" id="btn-fire">FIRE</button>
+    <button class="ctrl-btn" id="btn-auto">AUTO</button>
+    <button class="ctrl-btn" id="btn-bomb">BOMB</button>
   </div>
 </div>
 
-<script type="module" src="audio.js"></script>
-<script type="module" src="game.js"></script>
+<script>
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+let currentShip = 'jet';
+let state = 'menu'; // menu, play, gameover
 
+// تنظیم سایز صفحه
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resize);
+resize();
+
+const COLORS = { bg: '#06060f', white: '#fff', red: '#dc3232', yellow: '#ffdc3c', cyan: '#50dcdc' };
+
+// ورودی‌ها
+const input = { left: false, right: false, up: false, down: false, fire: false, auto: false };
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') input.fire = true;
+  if (e.key === 'ArrowLeft') input.left = true;
+  if (e.key === 'ArrowRight') input.right = true;
+  if (e.key === 'ArrowUp') input.up = true;
+  if (e.key === 'ArrowDown') input.down = true;
+});
+window.addEventListener('keyup', e => {
+  if (e.code === 'Space') input.fire = false;
+  if (e.key === 'ArrowLeft') input.left = false;
+  if (e.key === 'ArrowRight') input.right = false;
+  if (e.key === 'ArrowUp') input.up = false;
+  if (e.key === 'ArrowDown') input.down = false;
+});
+
+// رسم سفینه‌ها (همون طرح‌های جدید)
+function drawShip(x, y, w, h, type) {
+  ctx.save();
+  ctx.translate(x + w/2, y + h/2);
+  if (type === 'jet') {
+    ctx.fillStyle = COLORS.cyan;
+    ctx.beginPath();
+    ctx.moveTo(0, -h/2); ctx.lineTo(-w/4, 0); ctx.lineTo(-w/2, h/3); 
+    ctx.lineTo(-w/6, h/4); ctx.lineTo(-w/6, h/2); ctx.lineTo(w/6, h/2);
+    ctx.lineTo(w/6, h/4); ctx.lineTo(w/2, h/3); ctx.lineTo(w/4, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = COLORS.white; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#004488'; ctx.beginPath(); ctx.arc(0, -h/6, w/8, 0, Math.PI*2); ctx.fill();
+  } else if (type === 'spaceship') {
+    ctx.fillStyle = '#ff9632';
+    ctx.beginPath();
+    ctx.moveTo(0, -h/2); ctx.lineTo(w/4, -h/6); ctx.lineTo(w/2, h/4);
+    ctx.lineTo(w/6, h/4); ctx.lineTo(w/6, h/2); ctx.lineTo(-w/6, h/2);
+    ctx.lineTo(-w/6, h/4); ctx.lineTo(-w/2, h/4); ctx.lineTo(-w/4, -h/6);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = COLORS.white; ctx.lineWidth = 2; ctx.stroke();
+  } else if (type === 'heli') {
+    ctx.fillStyle = '#3cc85a';
+    ctx.beginPath(); ctx.ellipse(0, 0, w/3, h/2.5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = COLORS.white; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#78788c'; ctx.fillRect(-w/2, -h/2, w, 4); // پره
+    ctx.fillStyle = '#3cc85a'; ctx.fillRect(-4, h/4, 8, h/3); // دم
+    ctx.fillStyle = '#78788c'; ctx.fillRect(-w/4, h/2 + h/6, w/2, 4); // پره دم
+  } else if (type === 'ufo') {
+    ctx.fillStyle = '#b450dc';
+    ctx.beginPath(); ctx.ellipse(0, h/4, w/2, h/3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = COLORS.white; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = COLORS.cyan; ctx.beginPath(); ctx.arc(0, h/4 - h/4, w/4, Math.PI, 0); ctx.fill();
+  }
+  ctx.restore();
+}
+
+// کلاس بازیکن
+let player;
+class Player {
+  constructor() {
+    this.w = 40; this.h = 50;
+    this.x = canvas.width / 2 - this.w / 2;
+    this.y = canvas.height - 120;
+    this.hp = 10; this.bombs = 5; this.cooldown = 0;
+  }
+  update() {
+    let s = 7;
+    if (input.left) this.x -= s;
+    if (input.right) this.x += s;
+    if (input.up) this.y -= s;
+    if (input.down) this.y += s;
+    this.x = Math.max(5, Math.min(canvas.width - this.w - 5, this.x));
+    this.y = Math.max(60, Math.min(canvas.height - 100, this.y));
+    if (this.cooldown > 0) this.cooldown--;
+  }
+  draw() { drawShip(this.x, this.y, this.w, this.h, currentShip); }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+let bullets = [], enemies = [], stars = [];
+let score = 0, spawnTimer = 0;
+
+// شروع بازی
+function startGame() {
+  // درخواست تمام صفحه و افقی شدن
+  let elem = document.documentElement;
+  if (elem.requestFullscreen) elem.requestFullscreen();
+  if (screen.orientation && screen.orientation.lock) {
+    screen.orientation.lock('landscape').catch(e => console.log("چرخش قفل نشد"));
+  }
+
+  player = new Player();
+  bullets = []; enemies = [];
+  score = 0; spawnTimer = 0;
+  state = 'play';
+  
+  document.getElementById('menu-screen').classList.remove('active');
+  document.getElementById('gameover-screen').classList.remove('active');
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('touch-controls').classList.remove('hidden');
+  
+  // ساخت ستاره‌ها اگه خالی باشن
+  if(stars.length === 0) {
+    for(let i=0; i<80; i++) stars.push({x: Math.random()*canvas.width, y: Math.random()*canvas.height, s: Math.random()*2+1});
+  }
+}
+
+// نمایش صفحه
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  if(id) document.getElementById(id).classList.add('active');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('touch-controls').classList.add('hidden');
+  state = 'menu';
+}
+
+// انتخاب سفینه
+function setShip(type, btn) {
+  currentShip = type;
+  document.querySelectorAll('.ship-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// حلقه بازی
+function loop() {
+  requestAnimationFrame(loop);
+  
+  ctx.fillStyle = COLORS.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // ستاره‌ها
+  ctx.fillStyle = '#fff';
+  for(let s of stars) {
+    s.y += s.s;
+    if(s.y > canvas.height) { s.y = 0; s.x = Math.random()*canvas.width; }
+    ctx.fillRect(s.x, s.y, s.s, s.s);
+  }
+
+  if(state === 'play' && player) {
+    player.update();
+    
+    // شلیک
+    if((input.fire || input.auto) && player.cooldown === 0) {
+      bullets.push({ x: player.x + player.w/2 - 3, y: player.y, w: 6, h: 15 });
+      player.cooldown = 8;
+    }
+
+    // گلوله‌ها
+    for(let i=bullets.length-1; i>=0; i--) {
+      bullets[i].y -= 12;
+      if(bullets[i].y < -20) bullets.splice(i,1);
+      else { ctx.fillStyle = COLORS.yellow; ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].w, bullets[i].h); }
+    }
+
+    // دشمن‌ها
+    spawnTimer++;
+    if(spawnTimer > 60) {
+      let type = Math.random() < 0.3 ? 'drone' : 'jet';
+      enemies.push({ x: Math.random()*(canvas.width-40), y: -40, w: 35, h: 35, type: type, speed: type==='drone'?1.5:1, hp: type==='drone'?1:2 });
+      spawnTimer = 0;
+    }
+
+    for(let i=enemies.length-1; i>=0; i--) {
+      let e = enemies[i];
+      e.y += e.speed;
+      
+      // رسم دشمن
+      if(e.type === 'drone') {
+        ctx.fillStyle = COLORS.yellow;
+        ctx.beginPath(); ctx.arc(e.x + e.w/2, e.y + e.h/2, e.w/2, 0, Math.PI*2); ctx.fill();
+      } else {
+        ctx.fillStyle = COLORS.red;
+        ctx.beginPath(); ctx.moveTo(e.x + e.w/2, e.y + e.h); ctx.lineTo(e.x, e.y); ctx.lineTo(e.x + e.w, e.y); ctx.fill();
+      }
+
+      // برخورد
+      if(e.y > canvas.height) { enemies.splice(i,1); player.hp--; }
+      else {
+        for(let j=bullets.length-1; j>=0; j--) {
+          if(bullets[j].x < e.x+e.w && bullets[j].x+bullets[j].w > e.x && bullets[j].y < e.y+e.h && bullets[j].y+bullets[j].h > e.y) {
+            bullets.splice(j,1); e.hp--;
+            if(e.hp <= 0) { enemies.splice(i,1); score += 10; }
+            break;
+          }
+        }
+        // برخورد با بازیکن
+        if(e.x < player.x+player.w && e.x+e.w > player.x && e.y < player.y+player.h && e.y+e.h > player.y) {
+          enemies.splice(i,1); player.hp--;
+        }
+      }
+    }
+
+    player.draw();
+
+    // HUD
+    document.getElementById('score').innerText = score;
+    document.getElementById('hp').innerText = '*'.repeat(Math.max(0, player.hp));
+
+    if(player.hp <= 0) {
+      state = 'gameover';
+      document.getElementById('final-score').innerText = score;
+      document.getElementById('gameover-screen').classList.add('active');
+      document.getElementById('hud').classList.add('hidden');
+      document.getElementById('touch-controls').classList.add('hidden');
+    }
+  }
+}
+
+// کنترل‌های لمسی
+const touchMap = { 'btn-left': 'left', 'btn-right': 'right', 'btn-up': 'up', 'btn-down': 'down', 'btn-fire': 'fire' };
+Object.keys(touchMap).forEach(id => {
+  const btn = document.getElementById(id);
+  const key = touchMap[id];
+  btn.addEventListener('touchstart', e => { e.preventDefault(); input[key] = true; btn.style.transform = 'scale(0.9)'; });
+  btn.addEventListener('touchend', e => { e.preventDefault(); input[key] = false; btn.style.transform = 'scale(1)'; });
+  btn.addEventListener('mousedown', () => input[key] = true);
+  btn.addEventListener('mouseup', () => input[key] = false);
+});
+
+document.getElementById('btn-auto').addEventListener('click', function() {
+  input.auto = !input.auto;
+  this.style.background = input.auto ? 'rgba(60, 255, 90, 0.9)' : 'rgba(60, 160, 90, 0.5)';
+});
+document.getElementById('btn-bomb').addEventListener('click', function() {
+  if(state === 'play' && player && player.bombs > 0) {
+    player.bombs--;
+    enemies = [];
+    score += 50;
+  }
+});
+
+loop();
+</script>
 </body>
 </html>
