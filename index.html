@@ -3,16 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Bikini Bottom</title>
+<title>Bikini Bottom - Krusty Krab</title>
 <style>
   body { margin: 0; overflow: hidden; background: #000; font-family: Tahoma; }
   canvas { display: block; }
-  #ui { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #fff; font-size: 18px; z-index: 10; text-shadow: 1px 1px 3px #000; }
+  #ui { position: absolute; bottom: 20px; width: 100%; text-align: center; color: #fff; font-size: 18px; z-index: 10; text-shadow: 1px 1px 3px #000; pointer-events: none; }
   #interact-btn { 
     position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
     padding: 15px 30px; font-size: 20px; background: #ffcc00; border: none; border-radius: 10px;
     cursor: pointer; font-weight: bold; display: none; z-index: 20; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
   }
+  #interact-btn:active { background: #e6b800; }
 </style>
 </head>
 <body>
@@ -25,6 +26,7 @@
 const canvas = document.getElementById('game-canvas');
 const ctx = canvas.getContext('2d');
 const btn = document.getElementById('interact-btn');
+const uiText = document.getElementById('ui');
 
 function resize() {
   canvas.width = window.innerWidth;
@@ -54,18 +56,17 @@ window.addEventListener('keyup', (e) => {
 const player = { x: WORLD_WIDTH / 2, y: WORLD_HEIGHT / 2, size: 40, speed: 6, color: '#ffcc00' };
 const camera = { x: 0, y: 0 };
 
-// ساختمون‌ها
+// ساختمون‌های بیرون
 const buildings = [
   { x: WORLD_WIDTH / 2 - 150, y: WORLD_HEIGHT / 2 - 150, w: 100, h: 150, color: '#ffaa00', name: 'آناناس' },
   { x: WORLD_WIDTH / 2 + 200, y: WORLD_HEIGHT / 2 - 100, w: 120, h: 120, color: '#888888', name: 'خونه اختاپوس' },
   { x: WORLD_WIDTH / 2 - 300, y: WORLD_HEIGHT / 2 + 150, w: 180, h: 120, color: '#8b4513', name: 'رستوران خرچنگ' }
 ];
 
-// وضعیت بازی
 let insideRestaurant = false;
 
 function update() {
-  if (insideRestaurant) return; // اگه داخل رستورانیم، حرکت نکن
+  if (insideRestaurant) return; 
 
   if (keys.w) player.y -= player.speed;
   if (keys.s) player.y += player.speed;
@@ -78,14 +79,13 @@ function update() {
   camera.x = player.x - canvas.width / 2;
   camera.y = player.y - canvas.height / 2;
 
-  // بررسی فاصله با رستوران
   const restaurant = buildings[2];
   const dist = Math.hypot(player.x - (restaurant.x + restaurant.w/2), player.y - (restaurant.y + restaurant.h/2));
   
   if (dist < 100) {
-    btn.style.display = 'block'; // دکمه رو نشون بده
+    btn.style.display = 'block'; 
   } else {
-    btn.style.display = 'none'; // دکمه رو مخفی کن
+    btn.style.display = 'none'; 
   }
 }
 
@@ -94,32 +94,14 @@ function draw() {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   if (insideRestaurant) {
-    // --- دنیای داخل رستوران ---
-    ctx.fillStyle = '#8b4513'; // دیوارها
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = '#ffcc00'; // کف
-    ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
-    
-    ctx.fillStyle = '#fff';
-    ctx.font = '30px Tahoma';
-    ctx.textAlign = 'center';
-    ctx.fillText('داخل رستوران خرچنگ 🍔', canvas.width / 2, 100);
-
-    // دکمه خروج
-    ctx.fillStyle = '#ff0000';
-    ctx.fillRect(canvas.width / 2 - 50, canvas.height - 100, 100, 50);
-    ctx.fillStyle = '#fff';
-    ctx.font = '20px Tahoma';
-    ctx.fillText('خروج', canvas.width / 2, canvas.height - 65);
-
+    drawRestaurantInterior();
     return;
   }
 
-  // --- دنیای بیرون ---
   ctx.save();
   ctx.translate(-camera.x, -camera.y);
   
-  ctx.fillStyle = '#e6d5a8'; // زمین شنی
+  ctx.fillStyle = '#e6d5a8'; 
   ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
 
   buildings.forEach(b => {
@@ -131,7 +113,7 @@ function draw() {
     ctx.fillText(b.name, b.x + b.w/2, b.y - 10);
   });
 
-  // نقاشی باب اسفنجی
+  // باب اسفنجی
   ctx.fillStyle = player.color;
   ctx.fillRect(player.x, player.y, player.size, player.size);
   ctx.fillStyle = '#fff';
@@ -144,25 +126,72 @@ function draw() {
   ctx.restore();
 }
 
-// مدیریت کلیک روی دکمه
+// اینجا داخل رستوران رو نقاشی می‌کنیم
+function drawRestaurantInterior() {
+  // پس زمینه چوبی
+  ctx.fillStyle = '#3e2723'; 
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // کف
+  ctx.fillStyle = '#d7ccc8'; 
+  ctx.fillRect(50, 50, canvas.width - 100, canvas.height - 100);
+
+  // عنوان
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = 'bold 30px Tahoma';
+  ctx.textAlign = 'center';
+  ctx.fillText('🍔 Krusty Krab 🍔', canvas.width / 2, 100);
+
+  // پیشخوان (آقای خرچنگ)
+  ctx.fillStyle = '#5d4037';
+  ctx.fillRect(canvas.width - 200, 200, 150, 300);
+  ctx.fillStyle = '#fff';
+  ctx.font = '16px Tahoma';
+  ctx.fillText('پیشخوان', canvas.width - 125, 180);
+  
+  // آقای خرچنگ (مکعب قرمز)
+  ctx.fillStyle = '#ff0000';
+  ctx.fillRect(canvas.width - 170, 230, 40, 40);
+
+  // میز و صندلی
+  ctx.fillStyle = '#795548';
+  // میز 1
+  ctx.fillRect(200, 300, 100, 60);
+  // میز 2
+  ctx.fillRect(400, 400, 100, 60);
+  // میز 3
+  ctx.fillRect(200, 500, 100, 60);
+
+  // مشتری‌ها (ماهی‌ها)
+  ctx.fillStyle = '#64b5f6';
+  ctx.fillRect(220, 320, 30, 30); // مشتری میز 1
+  ctx.fillStyle = '#81c784';
+  ctx.fillRect(420, 420, 30, 30); // مشتری میز 2
+
+  // دکمه خروج
+  ctx.fillStyle = '#d32f2f';
+  ctx.fillRect(canvas.width / 2 - 60, canvas.height - 120, 120, 60);
+  ctx.fillStyle = '#fff';
+  ctx.font = 'bold 20px Tahoma';
+  ctx.fillText('خروج', canvas.width / 2, canvas.height - 80);
+}
+
 btn.addEventListener('click', () => {
   if (!insideRestaurant) {
     insideRestaurant = true;
     btn.style.display = 'none';
-    document.getElementById('ui').innerText = 'داخل رستوران - برای خروج کلیک کن';
+    uiText.innerText = 'برای خروج روی دکمه قرمز کلیک کن';
   }
 });
 
-// مدیریت کلیک روی صفحه (برای خروج)
 canvas.addEventListener('click', (e) => {
   if (insideRestaurant) {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    // اگه روی دکمه قرمز خروج کلیک شد
-    if (x > canvas.width / 2 - 50 && x < canvas.width / 2 + 50 && y > canvas.height - 100 && y < canvas.height - 50) {
+    if (x > canvas.width / 2 - 60 && x < canvas.width / 2 + 60 && y > canvas.height - 120 && y < canvas.height - 60) {
       insideRestaurant = false;
-      document.getElementById('ui').innerText = 'با WASD حرکت کن';
+      uiText.innerText = 'با WASD حرکت کن';
     }
   }
 });
