@@ -7,7 +7,7 @@
 <style>
   body { margin: 0; overflow: hidden; background: #000; }
   canvas { display: block; }
-  #ui { position: absolute; top: 10px; left: 10px; color: #fff; font-family: Tahoma; font-size: 20px; pointer-events: none; }
+  #ui { position: absolute; top: 10px; left: 10px; color: #fff; font-family: Tahoma; font-size: 20px; pointer-events: none; text-shadow: 2px 2px 4px #000; }
 </style>
 </head>
 <body>
@@ -26,8 +26,7 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
-// --- تنظیمات نقشه (۱ = دیوار، ۰ = فضای خالی) ---
-// این نقشه رو می‌تونی تغییر بدی تا خونه‌ها و جنگل ساخته بشه
+// --- تنظیمات نقشه (۱ = دیوار، ۰ = فضای خالی، ۲ = جنگل) ---
 const map = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -36,7 +35,7 @@ const map = [
   [1,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,1], // ۲ = جنگل
+  [1,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,1], 
   [1,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,2,2,2,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
@@ -44,26 +43,27 @@ const map = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
-const MAP_W = map[0].length;
-const MAP_H = map.length;
-
-// بازیکن
-let posX = 2.0;
-let posY = 2.0;
-let dirX = 1.0;
-let dirY = 0.0;
-let planeX = 0.0;
-let planeY = 0.66; // میدان دید
+// ساخت تکسچر شن با کد (نقطه نقطه)
+const sandCanvas = document.createElement('canvas');
+sandCanvas.width = 128;
+sandCanvas.height = 128;
+const sCtx = sandCanvas.getContext('2d');
+// رنگ پایه شن
+sCtx.fillStyle = '#e6d5a8';
+sCtx.fillRect(0, 0, 128, 128);
+// اضافه کردن دانه‌های شن
+for (let i = 0; i < 3000; i++) {
+  sCtx.fillStyle = Math.random() > 0.5 ? '#d4c496' : '#f0e2c0';
+  sCtx.fillRect(Math.random() * 128, Math.random() * 128, 2, 2);
+}
 
 const keys = { w: false, a: false, s: false, d: false };
-
 window.addEventListener('keydown', (e) => {
   if (e.key === 'w' || e.key === 'ArrowUp') keys.w = true;
   if (e.key === 's' || e.key === 'ArrowDown') keys.s = true;
   if (e.key === 'a' || e.key === 'ArrowLeft') keys.a = true;
   if (e.key === 'd' || e.key === 'ArrowRight') keys.d = true;
 });
-
 window.addEventListener('keyup', (e) => {
   if (e.key === 'w' || e.key === 'ArrowUp') keys.w = false;
   if (e.key === 's' || e.key === 'ArrowDown') keys.s = false;
@@ -71,25 +71,23 @@ window.addEventListener('keyup', (e) => {
   if (e.key === 'd' || e.key === 'ArrowRight') keys.d = false;
 });
 
-// قفل موس برای چرخش
-canvas.addEventListener('click', () => {
-  canvas.requestPointerLock();
-});
+let posX = 2.0, posY = 2.0;
+let dirX = 1.0, dirY = 0.0;
+let planeX = 0.0, planeY = 0.66;
 
+canvas.addEventListener('click', () => canvas.requestPointerLock());
 document.addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === canvas) {
     const rotSpeed = 0.002;
     const oldDirX = dirX;
     dirX = dirX * Math.cos(-e.movementX * rotSpeed) - dirY * Math.sin(-e.movementX * rotSpeed);
     dirY = oldDirX * Math.sin(-e.movementX * rotSpeed) + dirY * Math.cos(-e.movementX * rotSpeed);
-    
     const oldPlaneX = planeX;
     planeX = planeX * Math.cos(-e.movementX * rotSpeed) - planeY * Math.sin(-e.movementX * rotSpeed);
     planeY = oldPlaneX * Math.sin(-e.movementX * rotSpeed) + planeY * Math.cos(-e.movementX * rotSpeed);
   }
 });
 
-// حرکت و برخورد
 function update() {
   const moveSpeed = 0.05;
   if (keys.w) {
@@ -110,64 +108,50 @@ function update() {
   }
 }
 
-// رندر سه‌بعدی
 function draw() {
-  // آسمون
+  // آسمون آبی
   ctx.fillStyle = '#87CEEB';
   ctx.fillRect(0, 0, W, H / 2);
-  // زمین
-  ctx.fillStyle = '#e6d5a8';
-  ctx.fillRect(0, H / 2, W, H / 2);
+
+  // زمین (تکسچر شن رو کپی می‌کنیم و تکرار می‌کنیم)
+  // چون کف زمین توی raycasting ثابته، یه تکسچر ساده با فاصله گذاری می‌کشیم
+  const horizon = H / 2;
+  ctx.fillStyle = '#e6d5a8'; // رنگ پایه
+  ctx.fillRect(0, horizon, W, H - horizon);
+  
+  // کشیدن بافت شن روی زمین با خطوط افقی
+  for (let y = horizon; y < H; y++) {
+    // هرچی به افق نزدیک‌تر، خط‌ها ریزتر میشن
+    const step = (y - horizon) * 0.5 + 1; 
+    if (y % Math.floor(step) === 0) {
+      ctx.fillStyle = 'rgba(0,0,0,0.03)'; // سایه ملایم برای بافت
+      ctx.fillRect(0, y, W, 1);
+    }
+  }
 
   for (let x = 0; x < W; x++) {
     const cameraX = 2 * x / W - 1;
     const rayDirX = dirX + planeX * cameraX;
     const rayDirY = dirY + planeY * cameraX;
-
     let mapX = Math.floor(posX);
     let mapY = Math.floor(posY);
-
     const deltaDistX = Math.abs(1 / rayDirX);
     const deltaDistY = Math.abs(1 / rayDirY);
+    let stepX, stepY, sideDistX, sideDistY;
 
-    let stepX, stepY;
-    let sideDistX, sideDistY;
+    if (rayDirX < 0) { stepX = -1; sideDistX = (posX - mapX) * deltaDistX; }
+    else { stepX = 1; sideDistX = (mapX + 1.0 - posX) * deltaDistX; }
+    if (rayDirY < 0) { stepY = -1; sideDistY = (posY - mapY) * deltaDistY; }
+    else { stepY = 1; sideDistY = (mapY + 1.0 - posY) * deltaDistY; }
 
-    if (rayDirX < 0) {
-      stepX = -1;
-      sideDistX = (posX - mapX) * deltaDistX;
-    } else {
-      stepX = 1;
-      sideDistX = (mapX + 1.0 - posX) * deltaDistX;
-    }
-    if (rayDirY < 0) {
-      stepY = -1;
-      sideDistY = (posY - mapY) * deltaDistY;
-    } else {
-      stepY = 1;
-      sideDistY = (mapY + 1.0 - posY) * deltaDistY;
-    }
-
-    let hit = 0;
-    let side;
-
+    let hit = 0, side;
     while (hit === 0) {
-      if (sideDistX < sideDistY) {
-        sideDistX += deltaDistX;
-        mapX += stepX;
-        side = 0;
-      } else {
-        sideDistY += deltaDistY;
-        mapY += stepY;
-        side = 1;
-      }
+      if (sideDistX < sideDistY) { sideDistX += deltaDistX; mapX += stepX; side = 0; }
+      else { sideDistY += deltaDistY; mapY += stepY; side = 1; }
       if (map[mapY] && map[mapY][mapX] > 0) hit = 1;
     }
 
-    let perpWallDist;
-    if (side === 0) perpWallDist = (sideDistX - deltaDistX);
-    else perpWallDist = (sideDistY - deltaDistY);
-
+    let perpWallDist = (side === 0) ? (sideDistX - deltaDistX) : (sideDistY - deltaDistY);
     const lineHeight = Math.floor(H / perpWallDist);
     let drawStart = -lineHeight / 2 + H / 2;
     if (drawStart < 0) drawStart = 0;
@@ -177,11 +161,8 @@ function draw() {
     // رنگ دیوارها بر اساس نوع
     let color;
     const tile = map[mapY][mapX];
-    if (tile === 1) {
-        color = side === 1 ? '#8b4513' : '#a0522d'; // رستوران / خونه
-    } else if (tile === 2) {
-        color = side === 1 ? '#2e7d32' : '#4caf50'; // جنگل
-    }
+    if (tile === 1) color = side === 1 ? '#8b4513' : '#a0522d';
+    else if (tile === 2) color = side === 1 ? '#2e7d32' : '#4caf50';
 
     ctx.fillStyle = color;
     ctx.fillRect(x, drawStart, 1, drawEnd - drawStart);
@@ -193,7 +174,6 @@ function loop() {
   draw();
   requestAnimationFrame(loop);
 }
-
 loop();
 </script>
 </body>
