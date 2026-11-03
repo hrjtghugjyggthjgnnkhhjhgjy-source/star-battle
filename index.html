@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Bikini Bottom FPS - Streets & Big Pineapple</title>
+<title>Bikini Bottom FPS - First Person</title>
 <style>
   body { margin: 0; overflow: hidden; background: #000; }
   canvas { display: block; }
@@ -27,33 +27,28 @@ window.addEventListener('resize', resize);
 resize();
 
 // --- ساخت تکسچرها ---
-// 1. آسفالت (جاده)
 const texRoad = document.createElement('canvas'); texRoad.width = 64; texRoad.height = 64;
 const tRoad = texRoad.getContext('2d');
 tRoad.fillStyle = '#333333'; tRoad.fillRect(0,0,64,64);
-tRoad.fillStyle = '#ffff00'; tRoad.fillRect(30, 0, 4, 64); // خط کشی زرد
+tRoad.fillStyle = '#ffff00'; tRoad.fillRect(30, 0, 4, 64); 
 
-// 2. آناناس با پنجره و در
 const texPineapple = document.createElement('canvas'); texPineapple.width = 64; texPineapple.height = 64;
 const tPine = texPineapple.getContext('2d');
-tPine.fillStyle = '#ffaa00'; tPine.fillRect(0,0,64,64); // زرد
+tPine.fillStyle = '#ffaa00'; tPine.fillRect(0,0,64,64); 
 tPine.strokeStyle = '#cc8800'; tPine.lineWidth = 2;
-for(let i=0; i<64; i+=16) { // بافت آناناس
+for(let i=0; i<64; i+=16) { 
     tPine.beginPath(); tPine.moveTo(i,0); tPine.lineTo(i,64); tPine.stroke();
     tPine.beginPath(); tPine.moveTo(0,i); tPine.lineTo(64,i); tPine.stroke();
 }
-tPine.fillStyle = '#88ccff'; tPine.fillRect(10, 15, 15, 15); // پنجره چپ
-tPine.fillRect(40, 15, 15, 15); // پنجره راست
-tPine.fillStyle = '#5d4037'; tPine.fillRect(25, 40, 15, 24); // در چوبی
+tPine.fillStyle = '#88ccff'; tPine.fillRect(10, 15, 15, 15); tPine.fillRect(40, 15, 15, 15); 
+tPine.fillStyle = '#5d4037'; tPine.fillRect(25, 40, 15, 24); 
 
-// 3. خونه اختاپوس (خاکستری)
 const texSquid = document.createElement('canvas'); texSquid.width = 64; texSquid.height = 64;
 const tSquid = texSquid.getContext('2d');
 tSquid.fillStyle = '#888888'; tSquid.fillRect(0,0,64,64);
 tSquid.fillStyle = '#333333'; tSquid.fillRect(15, 15, 15, 20); tSquid.fillRect(35, 15, 15, 20);
 tSquid.fillStyle = '#5d4037'; tSquid.fillRect(25, 40, 15, 24);
 
-// 4. دیوار آجری (رستوران/حاشیه)
 const texBrick = document.createElement('canvas'); texBrick.width = 64; texBrick.height = 64;
 const tBrick = texBrick.getContext('2d');
 tBrick.fillStyle = '#8b4513'; tBrick.fillRect(0,0,64,64);
@@ -66,28 +61,29 @@ const textures = [null, texBrick, texRoad, texPineapple, texSquid];
 // --- نقشه (1=آجر، 2=جاده، 3=آناناس، 4=اختاپوس) ---
 const map = [
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1], // جاده افقی بالا
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
   [1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
-  [1,2,0,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1], // خونه آناناس بزرگ (بالا)
+  [1,2,0,3,3,3,3,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
   [1,2,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
   [1,2,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
   [1,2,0,3,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
-  [1,2,0,3,3,3,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1], // در ورودی آناناس
+  [1,2,0,3,3,3,0,3,3,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1], 
   [1,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
-  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1], // جاده افقی وسط
+  [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,1], // خونه اختاپوس (پایین)
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,4,4,0,0,0,1], 
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,4,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,0,4,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,0,4,0,0,0,1], // در اختاپوس
+  [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,4,0,4,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
   [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
 ];
 
-let posX = 4.5, posY = 9.5; // شروع در جاده
-let dirX = -1.0, dirY = 0.0;
-let planeX = 0.0, planeY = 0.66;
+// تنظیمات اولیه بازیکن
+let posX = 4.5, posY = 9.5; // وسط جاده
+let dirX = 1.0, dirY = 0.0; // جهت به سمت جلو (شرق)
+let planeX = 0.0, planeY = 0.66; // میدان دید
 
 const keys = { w: false, a: false, s: false, d: false };
 window.addEventListener('keydown', (e) => {
@@ -103,6 +99,7 @@ window.addEventListener('keyup', (e) => {
   if (e.key === 'd' || e.key === 'ArrowRight') keys.d = false;
 });
 
+// چرخش با موس
 canvas.addEventListener('click', () => canvas.requestPointerLock());
 document.addEventListener('mousemove', (e) => {
   if (document.pointerLockElement === canvas) {
@@ -119,7 +116,7 @@ document.addEventListener('mousemove', (e) => {
 function update() {
   const moveSpeed = 0.05;
   if (keys.w) {
-    if (map[Math.floor(posY)][Math.floor(posX + dirX * moveSpeed)] < 2) posX += dirX * moveSpeed; // 2=جاده، 0=خالی (رد نمیشه از دیوار 1 و 3 و 4)
+    if (map[Math.floor(posY)][Math.floor(posX + dirX * moveSpeed)] < 2) posX += dirX * moveSpeed;
     if (map[Math.floor(posY + dirY * moveSpeed)][Math.floor(posX)] < 2) posY += dirY * moveSpeed;
   }
   if (keys.s) {
@@ -136,15 +133,17 @@ function update() {
   }
 }
 
+// رندر سه‌بعدی (Raycasting)
 function draw() {
-  ctx.fillStyle = '#87CEEB'; // آسمون
+  // آسمون
+  ctx.fillStyle = '#87CEEB';
   ctx.fillRect(0, 0, W, H / 2);
   
-  // زمین (تکسچر جاده و شن)
-  // برای سادگی، ما توی raycasting زمین رو با تکسچر نمی‌کشیم، ولی برای حس جاده، پس‌زمینه رو خاکستری می‌کنیم
-  ctx.fillStyle = '#333333'; // کف آسفالت
+  // زمین (آسفالت)
+  ctx.fillStyle = '#333333';
   ctx.fillRect(0, H / 2, W, H / 2);
 
+  // کشیدن دیوارها
   for (let x = 0; x < W; x++) {
     const cameraX = 2 * x / W - 1;
     const rayDirX = dirX + planeX * cameraX;
