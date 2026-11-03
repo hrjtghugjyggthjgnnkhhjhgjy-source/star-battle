@@ -1,241 +1,289 @@
-import * as THREE from 'three';
-import { initAudio, playShootSound } from './audio.js';
+import { initAudio, playShoot, playExplosion, playHit } from './audio.js';
 
-// ================= 1. تنظیمات صحنه (شب ترسناک) =================
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x050510); // تاریکی مطلق
-scene.fog = new THREE.FogExp2(0x050510, 0.02); // مه غلیظ و تاریک
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); 
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-document.body.appendChild(renderer.domElement);
-
-// ================= 2. نورپردازی (ماه و چراغ قوه) =================
-// نور ماه (خیلی کم)
-const moonLight = new THREE.DirectionalLight(0x8899ff, 0.5); 
-moonLight.position.set(100, 200, -100);
-moonLight.castShadow = true;
-scene.add(moonLight);
-
-// چراغ‌قوه (نوری که همراه بازیکنه)
-const flashlight = new THREE.SpotLight(0xffffff, 2, 50, Math.PI/6, 0.5, 1);
-flashlight.position.set(0, 0, 0);
-scene.add(flashlight);
-scene.add(flashlight.target);
-
-// ================= 3. ماه توی آسمون =================
-const moonGeo = new THREE.SphereGeometry(20, 32, 32);
-const moonMat = new THREE.MeshBasicMaterial({ color: 0xeeeeff });
-const moonMesh = new THREE.Mesh(moonGeo, moonMat);
-moonMesh.position.set(100, 150, -300);
-scene.add(moonMesh);
-
-// ================= 4. زمین (خاکی) =================
-const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(500, 500), 
-  new THREE.MeshStandardMaterial({ color: 0x1a1a1a }) 
-);
-ground.rotation.x = -Math.PI / 2; 
-ground.receiveShadow = true;
-scene.add(ground);
-
-// ================= 5. ساخت روستای متروکه =================
-const obstacles = [];
-const houseMat = new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9 });
-
-function createHouse(x, z, w, h, d) {
-  const house = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), houseMat);
-  house.position.set(x, h/2, z); 
-  house.castShadow = true; house.receiveShadow = true;
-  scene.add(house);
-  obstacles.push({ minX: x - w/2, maxX: x + w/2, minZ: z - d/2, maxZ: z + d/2 });
+function resizeCanvas() {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width;
+  canvas.height = rect.height;
 }
+window.addEventListener('resize', resizeCanvas);
 
-// چیدن چند خونه متروکه
-createHouse(-20, -30, 10, 15, 10);
-createHouse(25, -40, 15, 20, 15);
-createHouse(-40, 20, 12, 18, 12);
-createHouse(30, 25, 10, 12, 10);
+const COLORS = {
+  bg: '#06060f', white: '#ffffff', red: '#dc3232', blue: '#5096ff',
+  yellow: '#ffdc3c', green: '#3cc85a', purple: '#b450dc', orange: '#ff9632',
+  cyan: '#50dcdc',
+};
 
-// ================= 6. دشمن‌ها (جن) =================
-let enemies = [];
-const enemyMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.8 }); // سفید و شبح وار
-const enemyGeo = new THREE.BoxGeometry(1, 2, 1);
+const STATE = { MENU: 'menu', PLAY: 'play', SKIN: 'skin', HELP: 'help', GAMEOVER: 'gameover' };
+let state = STATE.MENU;
+let currentShip = 'jet'; 
+let bestScore = parseInt(localStorage.getItem('sb_best') || '0');
 
-function spawnEnemy() {
-  const enemy = new THREE.Mesh(enemyGeo, enemyMat);
-  let x = (Math.random() - 0.5) * 100;
-  let z = (Math.random() - 0.5) * 100;
-  if (Math.abs(x) < 10 && Math.abs(z) < 10) { x += 30; z += 30; }
-  enemy.position.set(x, 1, z);
-  scene.add(enemy);
-  enemies.push(enemy);
-}
+const input = { left: false, right: false, up: false, down: false, fire: false, auto: false };
 
-for (let i = 0; i < 4; i++) spawnEnemy();
-
-// ================= 7. بازیکن =================
-let playerPos = new THREE.Vector3(0, 1.6, 20); 
-let playerYaw = 0, playerPitch = 0;
-let moveForward = 0, moveRight = 0;
-let isFiring = false, fireCooldown = 0;
-let bullets = [], decals = [];
-const playerRadius = 0.5; 
-
-// ================= 8. کنترل‌ها =================
-const joyZone = document.getElementById('joystick-zone');
-const joyKnob = document.getElementById('joystick-knob');
-const btnFire = document.getElementById('btn-fire');
-
-let joyTouchId = null, cameraTouchId = null;
-let lastTouchX = 0, lastTouchY = 0;
-let joyCenterX = 0, joyCenterY = 0, joyMaxDist = 40;
-
-function updateJoyCenter() {
-  const rect = joyZone.getBoundingClientRect();
-  joyCenterX = rect.left + rect.width / 2; joyCenterY = rect.top + rect.height / 2;
-}
-
-document.addEventListener('touchstart', (e) => {
-  e.preventDefault(); initAudio();
-  for (let i = 0; i < e.changedTouches.length; i++) {
-    const touch = e.changedTouches[i];
-    if (touch.target === joyZone || touch.target === joyKnob) { joyTouchId = touch.identifier; updateJoyCenter(); } 
-    else if (touch.target === btnFire) { isFiring = true; } 
-    else if (cameraTouchId === null) { cameraTouchId = touch.identifier; lastTouchX = touch.clientX; lastTouchY = touch.clientY; }
-  }
-}, {passive: false});
-
-document.addEventListener('touchmove', (e) => {
-  e.preventDefault();
-  for (let i = 0; i < e.changedTouches.length; i++) {
-    const touch = e.changedTouches[i];
-    if (touch.identifier === joyTouchId) {
-      let dx = touch.clientX - joyCenterX, dy = touch.clientY - joyCenterY;
-      let dist = Math.sqrt(dx*dx + dy*dy);
-      if (dist > joyMaxDist) { dx = (dx / dist) * joyMaxDist; dy = (dy / dist) * joyMaxDist; }
-      joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
-      moveRight = dx / joyMaxDist; moveForward = -dy / joyMaxDist;
-    }
-    if (touch.identifier === cameraTouchId) {
-      let dx = touch.clientX - lastTouchX, dy = touch.clientY - lastTouchY;
-      playerYaw -= dx * 0.005; playerPitch -= dy * 0.005;
-      playerPitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, playerPitch));
-      lastTouchX = touch.clientX; lastTouchY = touch.clientY;
-    }
-  }
-}, {passive: false});
-
-document.addEventListener('touchend', (e) => {
-  e.preventDefault();
-  for (let i = 0; i < e.changedTouches.length; i++) {
-    const touch = e.changedTouches[i];
-    if (touch.identifier === joyTouchId) {
-      joyTouchId = null; joyKnob.style.transform = 'translate(0px, 0px)'; moveForward = 0; moveRight = 0;
-    }
-    if (touch.target === btnFire) isFiring = false;
-    if (touch.identifier === cameraTouchId) cameraTouchId = null;
-  }
-}, {passive: false});
-
-// ================= 9. شلیک =================
-const raycaster = new THREE.Raycaster();
-function shootBullet() {
-  const b = new THREE.Mesh(new THREE.SphereGeometry(0.1, 4, 4), new THREE.MeshBasicMaterial({ color: 0xffff00 }));
-  const startPos = camera.position.clone();
-  const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-  b.position.copy(startPos).add(dir.multiplyScalar(1));
-  b.userData = { velocity: dir.multiplyScalar(2), life: 100 };
-  scene.add(b); bullets.push(b);
-
-  raycaster.set(camera.position, dir);
-  const intersects = raycaster.intersectObjects([ground, ...obstacles.map(o => o.mesh), ...enemies], true);
-
-  if (intersects.length > 0) {
-    const hit = intersects[0];
-    
-    // اگه به جن خورد
-    if (enemies.includes(hit.object)) {
-      scene.remove(hit.object);
-      enemies.splice(enemies.indexOf(hit.object), 1);
-    } 
-    // اگه به دیوار خورد
-    else if (hit.object.material === houseMat || hit.object === ground) {
-      const decal = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 0.3), new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false }));
-      decal.position.copy(hit.point);
-      decal.lookAt(hit.point.clone().add(hit.face.normal));
-      scene.add(decal);
-      decals.push({ mesh: decal, timeCreated: performance.now() });
-    }
-  }
-}
-
-// ================= 10. برخورد =================
-function checkCollision(newX, newZ) {
-  for (let obs of obstacles) {
-    if (newX + playerRadius > obs.minX && newX - playerRadius < obs.maxX &&
-        newZ + playerRadius > obs.minZ && newZ - playerRadius < obs.maxZ) return true;
-  }
-  return false;
-}
-
-// ================= 11. حلقه بازی =================
-function animate() {
-  requestAnimationFrame(animate);
-
-  // حرکت جنی‌ها به سمت بازیکن
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    let enemy = enemies[i];
-    let dir = new THREE.Vector3().subVectors(playerPos, enemy.position).normalize();
-    enemy.position.add(dir.multiplyScalar(0.05)); // سرعت کم و ترسناک
-    enemy.lookAt(playerPos.x, enemy.position.y, playerPos.z);
-  }
-
-  if (enemies.length < 4 && Math.random() < 0.01) spawnEnemy();
-
-  const moveSpeed = 0.25;
-  const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion); forward.y = 0; forward.normalize();
-  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion); right.y = 0; right.normalize();
-  
-  let moveX = (forward.x * moveForward + right.x * moveRight) * moveSpeed;
-  let moveZ = (forward.z * moveForward + right.z * moveRight) * moveSpeed;
-  
-  if (!checkCollision(playerPos.x + moveX, playerPos.z)) playerPos.x += moveX;
-  if (!checkCollision(playerPos.x, playerPos.z + moveZ)) playerPos.z += moveZ;
-  
-  camera.position.copy(playerPos); 
-  camera.rotation.set(playerPitch, playerYaw, 0, 'YXZ');
-
-  // چراغ قوه همراه دوربین
-  flashlight.position.copy(camera.position);
-  flashlight.target.position.copy(camera.position).add(forward);
-  flashlight.target.updateMatrixWorld();
-
-  if (isFiring) { 
-    fireCooldown--; 
-    if (fireCooldown <= 0) { shootBullet(); playShootSound(); fireCooldown = 10; } 
-  }
-
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    const b = bullets[i]; b.position.add(b.userData.velocity); b.userData.life--;
-    if (b.userData.life <= 0) { scene.remove(b); bullets.splice(i, 1); }
-  }
-
-  const currentTime = performance.now();
-  for (let i = decals.length - 1; i >= 0; i--) {
-    if (currentTime - decals[i].timeCreated > 40000) { scene.remove(decals[i].mesh); decals.splice(i, 1); }
-  }
-  
-  renderer.render(scene, camera);
-}
-
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight; 
-  camera.updateProjectionMatrix(); 
-  renderer.setSize(window.innerWidth, window.innerHeight);
+// کیبورد
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space') { input.fire = true; e.preventDefault(); }
+  if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') input.left = true;
+  if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') input.right = true;
+  if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') input.up = true;
+  if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') input.down = true;
+});
+window.addEventListener('keyup', e => {
+  if (e.code === 'Space') input.fire = false;
+  if (e.key === 'ArrowLeft' || e.key.toLowerCase() === 'a') input.left = false;
+  if (e.key === 'ArrowRight' || e.key.toLowerCase() === 'd') input.right = false;
+  if (e.key === 'ArrowUp' || e.key.toLowerCase() === 'w') input.up = false;
+  if (e.key === 'ArrowDown' || e.key.toLowerCase() === 's') input.down = false;
 });
 
-animate();
+// رسم سفینه
+function drawShip(x, y, w, h, type) {
+  ctx.save();
+  ctx.translate(x + w/2, y + h/2);
+  
+  if (type === 'jet') {
+    ctx.fillStyle = COLORS.cyan;
+    ctx.beginPath();
+    ctx.moveTo(0, -h/2); ctx.lineTo(-w/4, 0); ctx.lineTo(-w/2, h/3);
+    ctx.lineTo(-w/6, h/4); ctx.lineTo(-w/6, h/2); ctx.lineTo(w/6, h/2);
+    ctx.lineTo(w/6, h/4); ctx.lineTo(w/2, h/3); ctx.lineTo(w/4, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = COLORS.white; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = '#004488';
+    ctx.beginPath(); ctx.arc(0, -h/6, w/8, 0, Math.PI*2); ctx.fill();
+  } else if (type === 'spaceship') {
+    ctx.fillStyle = COLORS.orange;
+    ctx.beginPath();
+    ctx.moveTo(0, -h/2); ctx.lineTo(w/4, -h/6); ctx.lineTo(w/2, h/4);
+    ctx.lineTo(w/6, h/4); ctx.lineTo(w/6, h/2); ctx.lineTo(-w/6, h/2);
+    ctx.lineTo(-w/6, h/4); ctx.lineTo(-w/2, h/4); ctx.lineTo(-w/4, -h/6);
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = COLORS.white; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = COLORS.red;
+    ctx.fillRect(-w/4, h/2 - 5, w/6, 8); ctx.fillRect(w/12, h/2 - 5, w/6, 8);
+  } else if (type === 'heli') {
+    ctx.fillStyle = COLORS.green;
+    ctx.beginPath(); ctx.ellipse(0, 0, w/3, h/2.5, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = COLORS.white; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = COLORS.gray;
+    ctx.fillRect(-w/2, -h/2, w, 4);
+    ctx.beginPath(); ctx.arc(0, -h/2 + 2, 4, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = COLORS.green;
+    ctx.fillRect(-4, h/4, 8, h/3);
+    ctx.fillRect(-w/4, h/2 + h/6, w/2, 4);
+  } else if (type === 'ufo') {
+    ctx.fillStyle = COLORS.purple;
+    ctx.beginPath(); ctx.ellipse(0, h/4, w/2, h/3, 0, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = COLORS.white; ctx.lineWidth = 2; ctx.stroke();
+    ctx.fillStyle = COLORS.cyan;
+    ctx.beginPath(); ctx.arc(0, h/4 - h/4, w/4, Math.PI, 0); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = COLORS.yellow;
+    for(let i=-1; i<=1; i++) { ctx.beginPath(); ctx.arc(i*w/3, h/4, 3, 0, Math.PI*2); ctx.fill(); }
+  }
+  ctx.restore();
+}
+
+class Player {
+  constructor() {
+    this.w = 45; this.h = 55;
+    this.x = canvas.width / 2 - this.w / 2;
+    this.y = canvas.height - 300;
+    this.hp = 10; this.maxHp = 10;
+    this.cooldown = 0; this.bombs = 5;
+  }
+  update() {
+    const s = 7;
+    if (input.left)  this.x -= s;
+    if (input.right) this.x += s;
+    if (input.up)    this.y -= s;
+    if (input.down)  this.y += s;
+    this.x = Math.max(5, Math.min(canvas.width - this.w - 5, this.x));
+    this.y = Math.max(60, Math.min(canvas.height - 180, this.y));
+    if (this.cooldown > 0) this.cooldown--;
+  }
+  draw() { drawShip(this.x, this.y, this.w, this.h, currentShip); }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+class Bullet {
+  constructor(x, y, isEnemy = false) {
+    this.x = x; this.y = y; this.w = 6; this.h = 15; this.isEnemy = isEnemy;
+    this.color = isEnemy ? COLORS.red : COLORS.yellow;
+  }
+  update() { this.y += this.isEnemy ? 6 : -12; }
+  draw() { ctx.fillStyle = this.color; ctx.fillRect(this.x, this.y, this.w, this.h); }
+  offScreen() { return this.isEnemy ? this.y > canvas.height : this.y < -20; }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+class Enemy {
+  constructor(type) {
+    this.type = type;
+    this.w = 35; this.h = 35;
+    this.x = Math.random() * (canvas.width - this.w);
+    this.y = -this.h;
+    this.moveDir = Math.random() < 0.5 ? 1 : -1;
+    if (type === 'drone') { this.w = 25; this.h = 25; this.speed = 1.5; this.hp = 1; this.color = COLORS.yellow; }
+    else if (type === 'jet') { this.speed = 1.0; this.hp = 2; this.color = COLORS.red; }
+    else { this.speed = 0.7; this.hp = 1; this.color = COLORS.purple; }
+  }
+  update() {
+    this.y += this.speed; this.x += 0.5 * this.moveDir;
+    if (this.x <= 0 || this.x + this.w >= canvas.width) this.moveDir *= -1;
+  }
+  draw() {
+    ctx.fillStyle = this.color;
+    ctx.beginPath();
+    if(this.type === 'drone') { ctx.arc(this.x + this.w/2, this.y + this.h/2, this.w/2, 0, Math.PI*2); }
+    else { ctx.moveTo(this.x + this.w/2, this.y + this.h); ctx.lineTo(this.x, this.y); ctx.lineTo(this.x + this.w, this.y); }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = COLORS.white; ctx.lineWidth = 2; ctx.stroke();
+  }
+  offScreen() { return this.y > canvas.height; }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+let player, bullets, enemyBullets, enemies;
+let score = 0, spawnTimer = 0, spawnDelay = 90, level = 1;
+
+function rectsCollide(a, b) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+function startGame() {
+  initAudio();
+  player = new Player();
+  bullets = []; enemyBullets = []; enemies = [];
+  score = 0; spawnTimer = 0; level = 1; spawnDelay = 90;
+  state = STATE.PLAY;
+  showScreen(null);
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('touch-controls').classList.remove('hidden');
+}
+
+function gameOver() {
+  bestScore = Math.max(bestScore, score);
+  localStorage.setItem('sb_best', bestScore);
+  document.getElementById('final-score').textContent = score;
+  document.getElementById('best-score').textContent = bestScore;
+  state = STATE.GAMEOVER;
+  showScreen('gameover-screen');
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('touch-controls').classList.add('hidden');
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  if (id) document.getElementById(id).classList.add('active');
+}
+
+let stars = [];
+for (let i = 0; i < 80; i++) stars.push({ x: Math.random()*600, y: Math.random()*800, s: Math.random()*2+1 });
+
+function gameLoop() {
+  requestAnimationFrame(gameLoop);
+  ctx.fillStyle = COLORS.bg; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#fff';
+  for (let s of stars) {
+    s.y += s.s; if (s.y > canvas.height) { s.y = 0; s.x = Math.random()*canvas.width; }
+    ctx.fillRect(s.x, s.y, s.s, s.s);
+  }
+
+  if (state === STATE.PLAY && player) {
+    player.update();
+    if ((input.fire || input.auto) && player.cooldown === 0) {
+      bullets.push(new Bullet(player.x + player.w/2 - 3, player.y));
+      playShoot();
+      player.cooldown = 8;
+    }
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      bullets[i].update(); if (bullets[i].offScreen()) bullets.splice(i, 1);
+    }
+    spawnTimer++;
+    if (spawnTimer >= spawnDelay) {
+      let r = Math.random();
+      let type = r < 0.3 ? 'drone' : (r < 0.7 ? 'jet' : 'normal');
+      enemies.push(new Enemy(type));
+      spawnTimer = 0;
+    }
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      let e = enemies[i]; e.update();
+      if (e.offScreen()) {
+        enemies.splice(i, 1); player.hp--; playHit();
+        if (player.hp <= 0) return gameOver();
+      }
+    }
+    for (let i = bullets.length - 1; i >= 0; i--) {
+      for (let j = enemies.length - 1; j >= 0; j--) {
+        if (rectsCollide(bullets[i].rect(), enemies[j].rect())) {
+          bullets.splice(i, 1); enemies[j].hp--;
+          if (enemies[j].hp <= 0) {
+            enemies.splice(j, 1); score += 10; playExplosion();
+          }
+          break;
+        }
+      }
+    }
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      if (rectsCollide(enemies[i].rect(), player.rect())) {
+        enemies.splice(i, 1); player.hp--; playHit();
+        if (player.hp <= 0) return gameOver();
+      }
+    }
+    for (let e of enemies) e.draw();
+    for (let b of bullets) b.draw();
+    player.draw();
+    document.getElementById('score').textContent = score;
+    document.getElementById('hp').textContent = '*'.repeat(Math.max(0, player.hp));
+  }
+}
+
+document.querySelectorAll('[data-action]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    initAudio();
+    const action = btn.dataset.action;
+    if (action === 'start') startGame();
+    else if (action === 'skin') { state = STATE.SKIN; showScreen('skin-screen'); }
+    else if (action === 'help') { state = STATE.HELP; showScreen('help-screen'); }
+    else if (action === 'back') { state = STATE.MENU; showScreen('menu-screen'); }
+    else if (action === 'restart') startGame();
+    else if (action === 'menu') { state = STATE.MENU; showScreen('menu-screen'); }
+  });
+});
+
+document.querySelectorAll('[data-ship]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    currentShip = btn.dataset.ship;
+    document.querySelectorAll('[data-ship]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  });
+});
+
+const touchMap = { 'btn-left': 'left', 'btn-right': 'right', 'btn-up': 'up', 'btn-down': 'down', 'btn-fire': 'fire' };
+Object.keys(touchMap).forEach(id => {
+  const btn = document.getElementById(id); const key = touchMap[id];
+  btn.addEventListener('touchstart', e => { e.preventDefault(); initAudio(); input[key] = true; btn.style.background = 'rgba(80,150,255,0.9)'; });
+  btn.addEventListener('touchend', e => { e.preventDefault(); input[key] = false; btn.style.background = ''; });
+  btn.addEventListener('mousedown', () => input[key] = true);
+  btn.addEventListener('mouseup', () => input[key] = false);
+});
+
+document.getElementById('btn-auto').addEventListener('click', function() {
+  initAudio();
+  input.auto = !input.auto;
+  this.classList.toggle('on', input.auto);
+});
+document.getElementById('btn-bomb').addEventListener('click', function() {
+  if (state === STATE.PLAY && player && player.bombs > 0) {
+    player.bombs--;
+    for(let e of enemies) score += 10;
+    enemies = [];
+    playExplosion();
+  }
+});
+
+resizeCanvas();
+gameLoop();
