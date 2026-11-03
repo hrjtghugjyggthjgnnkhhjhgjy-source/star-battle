@@ -1,43 +1,86 @@
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: Tahoma, Arial, sans-serif; user-select: none; -webkit-tap-highlight-color: transparent; }
-html, body { width: 100%; height: 100%; background: #06060f; overflow: hidden; display: flex; justify-content: center; align-items: center; touch-action: none; }
-#game-container { position: relative; width: 100vw; height: 100vh; max-width: 600px; background: #000; overflow: hidden; box-shadow: 0 0 60px rgba(80, 150, 255, 0.3); }
-#game-canvas { display: block; width: 100%; height: 100%; touch-action: none; }
-.screen { position: absolute; inset: 0; display: none; flex-direction: column; justify-content: center; align-items: center; gap: 10px; padding: 15px; background: linear-gradient(180deg, #0a0a1f 0%, #101030 100%); text-align: center; z-index: 10; overflow-y: auto; }
-.screen.active { display: flex; }
-.screen h1 { color: #ffdc3c; font-size: 32px; text-shadow: 0 0 25px rgba(255, 220, 60, 0.7); margin-bottom: 5px; }
-.menu-btn { width: 90%; max-width: 300px; padding: 12px 15px; border: none; border-radius: 14px; font-size: 16px; font-weight: bold; color: #fff; cursor: pointer; box-shadow: 0 4px 0 rgba(0,0,0,0.4); transition: transform 0.15s; }
-.menu-btn:active { transform: translateY(3px); }
-.menu-btn.green  { background: linear-gradient(180deg, #3aa864, #2a7d4a); }
-.menu-btn.blue   { background: linear-gradient(180deg, #4a7fd0, #2f5da0); }
-.menu-btn.orange { background: linear-gradient(180deg, #d08a3a, #a06520); }
-.menu-btn.gray   { background: linear-gradient(180deg, #6a6a80, #4a4a5a); }
-.ship-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 90%; max-width: 300px; }
-.ship-btn { background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.2); border-radius: 12px; padding: 15px 10px; color: #fff; font-weight: bold; font-size: 14px; cursor: pointer; transition: 0.2s; }
-.ship-btn.active { border-color: #ffdc3c; background: rgba(255, 220, 60, 0.2); box-shadow: 0 0 15px rgba(255, 220, 60, 0.5); }
-.help-text { color: #e0e0e0; font-size: 13px; line-height: 1.8; text-align: right; background: rgba(255,255,255,0.05); padding: 15px; border-radius: 14px; max-width: 90%; }
-.help-text b { color: #ffdc3c; }
-#hud { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; padding: 10px 14px; z-index: 5; pointer-events: none; }
-.hud-item { color: #fff; font-size: 13px; font-weight: bold; background: rgba(0,0,0,0.55); padding: 5px 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); }
-#hp { color: #ff5050; }
-#combo-hud { position: absolute; top: 55px; left: 50%; transform: translateX(-50%); color: #ffdc3c; font-size: 20px; font-weight: bold; text-shadow: 0 0 15px rgba(255, 220, 60, 0.8); z-index: 5; display: none; }
-#touch-controls { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
-.ctrl-btn { position: absolute; border-radius: 50%; border: 3px solid rgba(255,255,255,0.5); background: rgba(80, 150, 255, 0.3); color: #fff; font-size: 18px; font-weight: bold; display: flex; justify-content: center; align-items: center; pointer-events: auto; touch-action: none; }
-.ctrl-btn:active { background: rgba(80, 150, 255, 0.9); transform: scale(0.9); }
-#btn-up    { left: 95px;  bottom: 180px; width: 65px; height: 65px; }
-#btn-left  { left: 25px;  bottom: 110px; width: 65px; height: 65px; }
-#btn-down  { left: 95px;  bottom: 110px; width: 65px; height: 65px; }
-#btn-right { left: 165px; bottom: 110px; width: 65px; height: 65px; }
-#btn-bomb { left: 25px; bottom: 255px; width: 70px; height: 70px; background: rgba(220, 130, 40, 0.4); font-size: 13px; }
-#btn-fire { right: 20px; bottom: 30px; width: 100px; height: 100px; background: rgba(220, 50, 50, 0.45); font-size: 16px; }
-#btn-auto { right: 130px; bottom: 30px; width: 78px; height: 78px; background: rgba(60, 160, 90, 0.4); font-size: 14px; }
-#btn-auto.on { background: rgba(60, 255, 90, 0.9); box-shadow: 0 0 25px rgba(60, 255, 90, 0.9); }
-.hidden { display: none !important; }
-@media (max-height: 700px) {
-  #btn-up { bottom: 150px; width: 58px; height: 58px; left: 85px; }
-  #btn-left { bottom: 90px; width: 58px; height: 58px; left: 20px; }
-  #btn-down { bottom: 90px; width: 58px; height: 58px; left: 85px; }
-  #btn-right { bottom: 90px; width: 58px; height: 58px; left: 150px; }
-  #btn-bomb { width: 62px; height: 62px; bottom: 215px; left: 20px; font-size: 11px; }
-  #btn-fire { width: 88px; height: 88px; }
-  #btn-auto { width: 68px; height: 68px; right: 115px; }
+import { initAudio, playShoot, playExplosion, playHit } from './audio.js';
+
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
 }
+window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
+
+const COLORS = { bg: '#06060f', white: '#fff', red: '#dc3232', yellow: '#ffdc3c', cyan: '#50dcdc', purple: '#b450dc', orange: '#ff9632', green: '#3cc85a' };
+const STATE = { MENU: 'menu', PLAY: 'play', SKIN: 'skin', HELP: 'help', GAMEOVER: 'gameover' };
+let state = STATE.MENU;
+let currentShip = 'jet';
+let input = { x: 0, y: 0, fire: false };
+
+// کنترل جوی‌استیک
+const joyZone = document.getElementById('joystick-zone');
+const joyKnob = document.getElementById('joystick-knob');
+let joyCenterX = 0, joyCenterY = 0, joyMaxDist = 40;
+
+joyZone.addEventListener('touchstart', (e) => {
+  e.preventDefault();
+  initAudio();
+  const rect = joyZone.getBoundingClientRect();
+  joyCenterX = rect.left + rect.width / 2;
+  joyCenterY = rect.top + rect.height / 2;
+});
+joyZone.addEventListener('touchmove', (e) => {
+  e.preventDefault();
+  const touch = e.touches[0];
+  let dx = touch.clientX - joyCenterX;
+  let dy = touch.clientY - joyCenterY;
+  let dist = Math.sqrt(dx*dx + dy*dy);
+  if (dist > joyMaxDist) { dx = (dx/dist)*joyMaxDist; dy = (dy/dist)*joyMaxDist; }
+  joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+  input.x = dx / joyMaxDist;
+  input.y = dy / joyMaxDist;
+});
+joyZone.addEventListener('touchend', (e) => {
+  e.preventDefault();
+  joyKnob.style.transform = `translate(0px, 0px)`;
+  input.x = 0; input.y = 0;
+});
+
+document.getElementById('btn-fire').addEventListener('touchstart', (e) => { e.preventDefault(); initAudio(); input.fire = true; });
+document.getElementById('btn-fire').addEventListener('touchend', (e) => { e.preventDefault(); input.fire = false; });
+
+// ... (توابع drawShip, Player, Bullet, Enemy مثل قبل) ...
+
+class Player {
+  constructor() {
+    this.w = 45; this.h = 55;
+    this.x = canvas.width / 2 - this.w / 2;
+    this.y = canvas.height - 200;
+    this.hp = 10; this.cooldown = 0;
+  }
+  update() {
+    const s = 7;
+    this.x += input.x * s;
+    this.y += input.y * s;
+    this.x = Math.max(5, Math.min(canvas.width - this.w - 5, this.x));
+    this.y = Math.max(60, Math.min(canvas.height - this.h - 10, this.y));
+    if (this.cooldown > 0) this.cooldown--;
+  }
+  draw() { drawShip(this.x, this.y, this.w, this.h, currentShip); }
+  rect() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+// ... (بقیه کدها مثل Bullet, Enemy, حلقه بازی و...) ...
+
+// دکمه شروع
+document.querySelectorAll('[data-action]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    initAudio();
+    const action = btn.dataset.action;
+    if (action === 'start') { player = new Player(); state = STATE.PLAY; showScreen(null); document.getElementById('touch-controls').classList.remove('hidden'); document.getElementById('hud').classList.remove('hidden'); }
+    else if (action === 'back') { state = STATE.MENU; showScreen('menu-screen'); }
+    // ...
+  });
+});
+
+resizeCanvas();
+gameLoop();
